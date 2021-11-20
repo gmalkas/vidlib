@@ -1,0 +1,31 @@
+/* -------------------------------------------------------
+Variable font.
+Usage:
+
+  html { font-family: 'Inter', sans-serif; }
+  @supports (font-variation-settings: normal) {
+    html { font-family: 'Inter var', sans-serif; }
+  }
+*/
+@font-face {
+  font-family: 'Inter var';
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+  src: url("../fonts/Inter-roman.var.woff2?v=3.13") format("woff2");
+}
+@font-face {
+  font-family: 'Inter var';
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: italic;
+  src: url("../fonts/Inter-italic.var.woff2?v=3.13") format("woff2");
+}
+
+@font-face {
+  font-family: 'Nerko One';
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("../fonts/NerkoOne-Regular.ttf") format("truetype");
+}

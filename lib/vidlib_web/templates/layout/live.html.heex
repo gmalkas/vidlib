@@ -1,0 +1,48 @@
+<div class="py-10">
+  <header>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h1 class="inline bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent font-serif text-7xl leading-tight">
+        Vidlib
+      </h1>
+    </div>
+  </header>
+  <main>
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div class="hidden sm:block">
+        <div class="border-b border-gray-200">
+          <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <%= live_redirect to: Routes.feed_path(@socket, :index) do %>
+              <div class={nav_tab_class(@socket, VidlibWeb.FeedLive)}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Videos</span>
+              </div>
+            <% end %>
+
+            <%= live_redirect to: Routes.subscriptions_path(@socket, :index) do %>
+              <div class={nav_tab_class(@socket, VidlibWeb.SubscriptionsLive)}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                </svg>
+                <span>Subscriptions</span>
+              </div>
+            <% end %>
+
+            <%= live_redirect to: Routes.settings_path(@socket, :index) do %>
+              <div class={nav_tab_class(@socket, VidlibWeb.SettingsLive)}>
+                <svg xmlns="http://www.w3.org/2000/svg" class="" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                <span>Settings</span>
+              </div>
+            <% end %>
+          </nav>
+        </div>
+      </div>
+      <div class="px-2 py-6">
+        <%= @inner_content %>
+      </div>
+    </div>
+  </main>
+</div>
