@@ -20,7 +20,7 @@ defmodule Youtube.Channel do
     }
   end
 
-  def put_videos(%__MODULE__{} = channel, videos) do
-    %__MODULE__{channel | videos: videos}
+  def without_videos(%__MODULE__{} = channel) do
+    %__MODULE__{channel | videos: :__not_loaded__}
   end
 end

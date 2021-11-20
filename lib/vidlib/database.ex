@@ -33,6 +33,11 @@ defmodule Vidlib.Database do
     end
   end
 
+  def drop(schema) do
+    all(schema)
+    |> Enum.each(&delete/1)
+  end
+
   def delete(%schema{id: id}) do
     delete({schema, id})
   end

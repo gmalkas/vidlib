@@ -1,4 +1,4 @@
-defmodule Youtube.Downloader do
+defmodule Vidlib.Downloader do
   require Logger
 
   @filename_template "%(title)s-%(id)s.%(ext)s"
@@ -32,6 +32,26 @@ defmodule Youtube.Downloader do
       ])
 
     handle_download_progress(port, progress_callback, video_format_id, audio_format_id)
+  end
+
+  def thumbnail_as_data_url(%Youtube.Video{} = video) do
+    thumbnail = Enum.find(video.thumbnails || [], &(&1.width > 500)) || video.thumbnail
+
+    if !is_nil(thumbnail) do
+      Finch.build(:get, thumbnail[:url])
+      |> Finch.request(Crawler, timeout: 15_000)
+      |> case do
+        {:ok, %Finch.Response{status: 200} = response} ->
+          mime_type = Map.fetch!(Map.new(response.headers), "content-type")
+
+          to_data_url(mime_type, response.body)
+
+        _ ->
+          ""
+      end
+    else
+      ""
+    end
   end
 
   defp handle_download_progress(
@@ -93,7 +113,7 @@ defmodule Youtube.Downloader do
   end
 
   defp bin_path do
-    :code.priv_dir(:vidlib) |> Path.join("youtube-dl")
+    "/tmp/youtube-dl"
   end
 
   defp parse_metadata(metadata) do
@@ -125,4 +145,6 @@ defmodule Youtube.Downloader do
       height: thumbnail["height"]
     }
   end
+
+  defp to_data_url(mime_type, data), do: "data:#{mime_type};base64,#{Base.encode64(data)}"
 end

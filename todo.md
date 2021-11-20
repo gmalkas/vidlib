@@ -1,7 +1,7 @@
 # Feed
  [x] Download video
  [x] Page-based pagination
- [ ] Download thumbnails and use local ones instead of URLs
+ [x] Download thumbnails and use local ones instead of URLs
  [ ] Show download progress
  [ ] Cancel download
  [ ] Delete download

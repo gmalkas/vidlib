@@ -1,4 +1,6 @@
 defmodule Youtube.Video do
+  alias Vidlib.Downloader
+
   defstruct [
     :title,
     :thumbnail,
@@ -37,7 +39,7 @@ defmodule Youtube.Video do
   end
 
   def with_metadata(%__MODULE__{} = video) do
-    {:ok, metadata} = Youtube.Downloader.metadata(video.link)
+    {:ok, metadata} = Downloader.metadata(video.link)
 
     %__MODULE__{
       video

@@ -1,9 +1,20 @@
 defmodule Vidlib.Feeder do
   require Logger
 
-  alias Vidlib.{Database, Subscription}
+  alias Vidlib.{Database, Downloader, Feed, Subscription, Video}
 
-  def refresh(callback) do
+  def load(feed_url) do
+    {:ok, %Finch.Response{body: body}} =
+      Finch.build(:get, feed_url)
+      |> Finch.request(Crawler, timeout: 15_000)
+
+    [feed] = Quinn.parse(body)
+    channel = Youtube.Channel.from_atom(feed)
+
+    Feed.new(channel)
+  end
+
+  def refresh(callback \\ fn _ -> :ok end) do
     refreshed_at = DateTime.utc_now()
     last_refreshed_at = Database.get(:feed_refreshed_at) || "(Never)"
 
@@ -14,29 +25,24 @@ defmodule Vidlib.Feeder do
 
     subscriptions
     |> Enum.with_index(1)
-    |> Enum.each(fn {feed_url, index} ->
-      {:ok, %Finch.Response{body: body}} =
-        Finch.build(:get, feed_url)
-        |> Finch.request(Crawler, timeout: 15_000)
-
-      [feed] = Quinn.parse(body)
-      channel = Youtube.Channel.from_atom(feed)
+    |> Enum.each(fn {subscription, index} ->
+      feed = load(subscription.feed_url)
 
       {existing_videos, new_videos} =
-        case Database.get(channel) do
-          %Youtube.Channel{} = cached_channel ->
+        case Database.get(feed) do
+          %Feed{} = cached_feed ->
             existing_video_ids =
-              cached_channel.videos
+              cached_feed.videos
               |> Enum.map(& &1.id)
               |> MapSet.new()
 
             {
-              cached_channel.videos,
-              Enum.reject(channel.videos, &MapSet.member?(existing_video_ids, &1.id))
+              cached_feed.videos,
+              Enum.reject(feed.videos, &MapSet.member?(existing_video_ids, &1.id))
             }
 
           _ ->
-            {[], channel.videos}
+            {[], feed.videos}
         end
 
       new_videos_count = length(new_videos)
@@ -46,29 +52,38 @@ defmodule Vidlib.Feeder do
         |> Enum.with_index(1)
         |> Enum.map(fn {video, index} ->
           Logger.info(
-            "[#{channel.name}] [#{index}/#{new_videos_count}] Downloading metadata: #{video.title}"
+            "[#{feed.name}] [#{index}/#{new_videos_count}] Downloading metadata: #{video.title}"
           )
 
-          Youtube.Video.with_metadata(video)
+          youtube_video = Youtube.Video.with_metadata(video.youtube_video)
+
+          youtube_video
+          |> Video.new()
+          |> Video.with_thumbnail(Downloader.thumbnail_as_data_url(youtube_video))
         end)
 
-      channel =
-        Youtube.Channel.put_videos(
-          channel,
+      updated_feed =
+        Feed.put_videos(
+          feed,
           Enum.concat(new_videos_with_metadata, existing_videos)
         )
+        |> Feed.refreshed()
 
-      Database.put(channel)
+      Database.put(updated_feed)
       Database.save()
 
-      callback.({channel, index, subscription_count})
+      callback.({feed, index, subscription_count})
 
-      Logger.info("#{channel.name}: Loaded #{length(new_videos)} new videos")
+      Logger.info("#{feed.name}: Loaded #{length(new_videos)} new videos")
     end)
 
     callback.(:done)
 
     Database.put(:feed_refreshed_at, refreshed_at)
     Database.save()
+  end
+
+  def last_refreshed_at do
+    Database.get(:feed_refreshed_at)
   end
 end

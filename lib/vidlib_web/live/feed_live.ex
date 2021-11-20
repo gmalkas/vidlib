@@ -5,7 +5,7 @@ defmodule VidlibWeb.FeedLive do
 
   alias Phoenix.LiveView.JS
 
-  alias Vidlib.{Database, Download, Feeder, Pagination, Player, Subscription}
+  alias Vidlib.{Database, Download, Downloader, Feed, Feeder, Pagination, Player, Subscription}
 
   @preferred_container_format "webm"
   @preferred_video_codec "vp9"
@@ -14,20 +14,14 @@ defmodule VidlibWeb.FeedLive do
 
   def mount(params, _, socket) do
     page_number = Map.get(params, "page", "1") |> String.to_integer()
-
-    feeds = Database.all(Youtube.Channel)
-
-    videos =
-      feeds
-      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
-      |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+    page = load_video_page(page_number)
 
     downloads = Database.all(Download)
-    refreshed_at = Database.get(:feed_refreshed_at)
+    refreshed_at = Feeder.last_refreshed_at()
 
     {:ok,
      assign(socket,
-       page: Pagination.paginate(videos, @default_page_size, page_number),
+       page: page,
        downloads: downloads,
        refreshed_at: refreshed_at,
        refreshing_feed: nil
@@ -36,17 +30,11 @@ defmodule VidlibWeb.FeedLive do
 
   def handle_params(params, _, socket) do
     page_number = Map.get(params, "page", "1") |> String.to_integer()
-
-    feeds = Database.all(Youtube.Channel)
-
-    videos =
-      feeds
-      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
-      |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+    page = load_video_page(page_number)
 
     {:noreply,
      assign(socket,
-       page: Pagination.paginate(videos, @default_page_size, page_number)
+       page: page
      )}
   end
 
@@ -55,7 +43,7 @@ defmodule VidlibWeb.FeedLive do
 
     Task.start(fn ->
       Feeder.refresh(fn
-        {%Youtube.Channel{}, index, count} -> send(myself, {:channel_refreshed, index, count})
+        {%Feed{}, index, count} -> send(myself, {:feed_refreshed, index, count})
         :done -> send(myself, :feed_refreshed)
       end)
     end)
@@ -104,10 +92,13 @@ defmodule VidlibWeb.FeedLive do
       |> Enum.flat_map(& &1.videos)
       |> Enum.find(&(&1.id == video_id))
 
-    video_format = Enum.find(video.formats, &(&1.id == format_id))
+    video_format = Enum.find(video.youtube_video.formats, &(&1.id == format_id))
 
     audio_format =
-      Enum.filter(video.formats, &(&1.audio_codec == @preferred_audio_codec && !&1.video?))
+      Enum.filter(
+        video.youtube_video.formats,
+        &(&1.audio_codec == @preferred_audio_codec && !&1.video?)
+      )
       |> Enum.max_by(& &1.size)
 
     formatted_resolution = "#{elem(video_format.resolution, 1)}p"
@@ -131,7 +122,7 @@ defmodule VidlibWeb.FeedLive do
     Task.start(fn ->
       Logger.info("Downloading '#{video.title}' (#{formatted_resolution})")
 
-      Youtube.Downloader.download(downloads_path(), video, format_id, audio_format.id, fn
+      Downloader.download(downloads_path(), video, format_id, audio_format.id, fn
         :ok ->
           Database.put(Download.completed(download))
           Database.save()
@@ -172,10 +163,10 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def handle_info({:channel_refreshed, index, count}, socket) do
-    feeds = Database.all(Youtube.Channel)
+  def handle_info({:feed_refreshed, index, count}, socket) do
+    page = load_video_page(1)
 
-    {:noreply, assign(socket, feeds: feeds, refreshing_feed: {index, count})}
+    {:noreply, assign(socket, page: page, refreshing_feed: {index, count})}
   end
 
   def handle_info(:refresh_downloads, socket) do
@@ -185,7 +176,7 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def handle_info(:feed_refreshed, socket) do
-    refreshed_at = Database.get(:feed_refreshed_at)
+    refreshed_at = Feeder.last_refreshed_at()
 
     {:noreply, assign(socket, refreshing_feed: nil, refreshed_at: refreshed_at)}
   end
@@ -244,24 +235,23 @@ defmodule VidlibWeb.FeedLive do
     |> Enum.sort_by(& &1.resolution)
   end
 
-  def sort_videos(feeds) do
-    feeds
-    |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
-    |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
-  end
-
   def thumbnail_url(video) do
-    thumbnail = Enum.find(video.thumbnails || [], &(&1.width > 500)) || video.thumbnail
-
-    if !is_nil(thumbnail) do
-      thumbnail[:url]
-    else
-      ""
-    end
+    video.thumbnail
   end
 
   def refresh_button_class(nil), do: "refresh-button"
   def refresh_button_class({_, _}), do: "refresh-button refreshing"
+
+  defp load_video_page(page_number) do
+    feeds = Database.all(Feed)
+
+    videos =
+      feeds
+      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
+      |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+
+    Pagination.paginate(videos, @default_page_size, page_number)
+  end
 
   defp interesting_resolution?({_, height}) do
     height >= 480
