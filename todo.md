@@ -1,6 +1,6 @@
 # Feed
  [x] Download video
- [ ] Page-based pagination
+ [x] Page-based pagination
  [ ] Download thumbnails and use local ones instead of URLs
  [ ] Show download progress
  [ ] Cancel download
@@ -14,7 +14,7 @@
 
 # Settings
  [ ] First launch setup experience
- [ ] Path to application state
+ [ ] Path to database file
  [ ] Path to downloaded files
  [ ] Path to youtube-dl
  [ ] Default output format

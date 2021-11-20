@@ -1,8 +1,10 @@
 <div class="py-10">
   <header>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h1 class="inline bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent font-serif text-7xl leading-tight">
-        Vidlib
+      <h1 class="inline bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent font-serif text-7xl leading-tight hover:from-blue-500 hover:to-green-400">
+        <%= live_redirect to: Routes.feed_path(@socket, :index) do %>
+          Vidlib
+        <% end %>
       </h1>
     </div>
   </header>

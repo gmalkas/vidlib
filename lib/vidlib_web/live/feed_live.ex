@@ -5,23 +5,48 @@ defmodule VidlibWeb.FeedLive do
 
   alias Phoenix.LiveView.JS
 
-  alias Vidlib.{Database, Download, Feeder, Player, Subscription}
+  alias Vidlib.{Database, Download, Feeder, Pagination, Player, Subscription}
 
   @preferred_container_format "webm"
   @preferred_video_codec "vp9"
   @preferred_audio_codec "opus"
+  @default_page_size 9
 
-  def mount(_params, _, socket) do
+  def mount(params, _, socket) do
+    page_number = Map.get(params, "page", "1") |> String.to_integer()
+
     feeds = Database.all(Youtube.Channel)
+
+    videos =
+      feeds
+      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
+      |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+
     downloads = Database.all(Download)
     refreshed_at = Database.get(:feed_refreshed_at)
 
     {:ok,
      assign(socket,
+       page: Pagination.paginate(videos, @default_page_size, page_number),
        downloads: downloads,
-       feeds: feeds,
        refreshed_at: refreshed_at,
        refreshing_feed: nil
+     )}
+  end
+
+  def handle_params(params, _, socket) do
+    page_number = Map.get(params, "page", "1") |> String.to_integer()
+
+    feeds = Database.all(Youtube.Channel)
+
+    videos =
+      feeds
+      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
+      |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+
+    {:noreply,
+     assign(socket,
+       page: Pagination.paginate(videos, @default_page_size, page_number)
      )}
   end
 
