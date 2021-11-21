@@ -1,7 +1,7 @@
 defmodule Vidlib.Feeder do
   require Logger
 
-  alias Vidlib.{Database, Downloader, Feed, Subscription, Video}
+  alias Vidlib.{Database, Downloader, Event, Feed, Subscription, Video}
 
   def load(feed_url) do
     {:ok, %Finch.Response{body: body}} =
@@ -48,10 +48,14 @@ defmodule Vidlib.Feeder do
 
         youtube_video = Youtube.Video.with_metadata(video.youtube_video)
 
-        youtube_video
-        |> Video.new()
-        |> Video.with_thumbnail(Downloader.thumbnail_as_data_url(youtube_video))
-        |> Database.put()
+        video =
+          youtube_video
+          |> Video.new()
+          |> Video.with_thumbnail(Downloader.thumbnail_as_data_url(youtube_video))
+
+        Database.put(video)
+
+        Event.Dispatcher.publish({:video, :new, video.id})
       end)
 
       updated_feed =
@@ -61,6 +65,8 @@ defmodule Vidlib.Feeder do
 
       Database.put(updated_feed)
       Database.save()
+
+      Event.Dispatcher.publish({:feed, :refreshed, updated_feed.id})
 
       callback.({feed, index, subscription_count})
 

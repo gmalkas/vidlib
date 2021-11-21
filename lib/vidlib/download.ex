@@ -12,9 +12,15 @@ defmodule Vidlib.Download do
     :last_progress_at
   ]
 
-  def active?(%__MODULE__{} = download) do
+  def in_progress?(%__MODULE__{} = download) do
     !is_nil(download.progress)
   end
+
+  def completed?(%__MODULE__{completed_at: nil}), do: false
+  def completed?(%__MODULE__{completed_at: _}), do: true
+
+  def failed?(%__MODULE__{failed_at: nil}), do: false
+  def failed?(%__MODULE__{failed_at: _}), do: true
 
   def new(params) do
     struct!(__MODULE__, params)

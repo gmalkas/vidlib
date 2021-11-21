@@ -2,11 +2,13 @@
  [x] Download video
  [x] Page-based pagination
  [x] Download thumbnails and use local ones instead of URLs
- [ ] Show download progress
+ [x] Show download progress
  [x] Cancel download
  [ ] Delete download
- [ ] Auto-resume download after crash
+ [ ] Auto-resume download after crash/reboot
  [ ] Parallel downloads with aggregate progress
+ [ ] Download queue
+ [ ] Download pause/resume
  [ ] List/Grid view
  [ ] Filter to view only downloaded videos
  [ ] Infinite scrolling pagination
@@ -15,11 +17,11 @@
 
 # Settings
  [ ] First launch setup experience
- [ ] Path to database file
  [ ] Path to downloaded files
  [ ] Path to youtube-dl
  [ ] Default output format
  [ ] Default resolution
+ [ ] Audio quality
  [ ] Max. # of parallel downloads
  [ ] Path to native player
  [ ] In-browser vs native player

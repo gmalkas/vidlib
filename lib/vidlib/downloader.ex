@@ -83,7 +83,7 @@ defmodule Vidlib.Downloader do
                data
              ) do
           [_, progress, _, download_speed, eta] ->
-            callback.({:progress, progress, video_or_audio, download_speed, eta})
+            callback.({:progress, String.to_float(progress), video_or_audio, download_speed, eta})
 
           nil ->
             :ok

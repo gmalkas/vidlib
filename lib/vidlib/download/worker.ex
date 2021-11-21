@@ -3,7 +3,7 @@ defmodule Vidlib.Download.Worker do
 
   require Logger
 
-  alias Vidlib.{Database, Download, Downloader, Video}
+  alias Vidlib.{Database, Download, Downloader, Event, Video}
 
   # API
 
@@ -46,15 +46,21 @@ defmodule Vidlib.Download.Worker do
     {:reply, task, state}
   end
 
-  def handle_cast({:progress, _download}, state) do
+  def handle_cast({:progress, download}, state) do
+    Event.Dispatcher.publish({:download, :progress, download.id})
+
     {:noreply, state}
   end
 
-  def handle_cast({:failed, _download}, state) do
+  def handle_cast({:failed, download}, state) do
+    Event.Dispatcher.publish({:download, :failed, download.id})
+
     {:noreply, state}
   end
 
-  def handle_cast({:done, _download}, state) do
+  def handle_cast({:done, download}, state) do
+    Event.Dispatcher.publish({:download, :done, download.id})
+
     {:noreply, state}
   end
 
@@ -71,6 +77,9 @@ defmodule Vidlib.Download.Worker do
 
     video_format = Enum.find(video.youtube_video.formats, &(&1.id == video_format_id))
     formatted_resolution = "#{elem(video_format.resolution, 1)}p"
+
+    Database.put(Video.with_download(video, download))
+    Event.Dispatcher.publish({:download, :started, video.download.id})
 
     Logger.info("Downloading '#{video.title}' (#{formatted_resolution})")
 

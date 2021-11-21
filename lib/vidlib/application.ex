@@ -9,6 +9,7 @@ defmodule Vidlib.Application do
   def start(_type, _args) do
     children = [
       {Finch, name: Crawler},
+      Vidlib.Event.Dispatcher,
       {Task.Supervisor, name: Vidlib.Download.TaskSupervisor},
       Vidlib.Database,
       {Registry, keys: :unique, name: Registry.Download.Worker},

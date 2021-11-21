@@ -18,22 +18,31 @@
   <%= for {channel, video} <- @page.entries do %>
     <li class="block rounded-md space-y-4">
       <div class="group relative">
+        <%= if has_download?(video) do %>
+          <VidlibWeb.FeedLive.ProgressBarComponent.render color={download_status_color(video.download)} progress={download_progress(video.download)} />
+        <% end %>
         <img {[src: thumbnail_url(video)]} width="512" class="shadow-md rounded-lg" />
-        <div class="opacity-0 absolute inset-0 p-4 group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition">
+        <div class={"#{video_overlay_class(video)} absolute inset-0 z-10 p-4 rounded-md group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition"}>
           <div class="h-full flex items-center justify-center">
             <%= case video.download do %>
               <% %Download{progress: %{} = progress} = download -> %>
                 <div class="rounded-md text-white focus:outline-none">
-                  <div class="py-3 px-2 flex flex-col justify-center">
-                    <span class="text-3xl font-medium">Downloading <%= progress.filetype %>...</span>
-                    <span class="text-3xl font-medium"><%= format_resolution(download.format) %></span>
-                    <span class="text-sm"><%= progress.progress %>% <%= format_filesize(download.format.size) %></span>
-                    <button phx-throttle="1000" phx-click={JS.push("download:cancel", value: %{video_id: video.id})} class="cursor-pointer text-xl font-medium text-white hover:text-blue-300">Cancel</button>
+                  <div class="py-3 px-2 flex flex-col items-center justify-center space-y-4">
+                    <span class="text-base font-medium">Downloading <%= progress.filetype %>...</span>
+                    <div class="flex flex-col items-center justify-center">
+                      <span class="text-3xl font-medium"><%= download.progress.progress %>% (<%= download.progress.eta %>)</span>
+                      <span class="text-base"><%= format_resolution(download.format) %> &middot; <%= format_filesize(download.format.size) %></span>
+                    </div>
+                    <div>
+                      <button phx-throttle="1000" phx-click={JS.push("download:cancel", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-white border border-gray-200 hover:text-blue-300 hover:border-blue-300">
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-              <% %Download{failed_at: nil} -> %>
-                <button phx-throttle="1000" phx-click={JS.push("play", value: %{video_id: video.id})} class="text-white hover:text-blue-300">
+              <% %Download{completed_at: completed_at} when not(is_nil(completed_at)) -> %>
+                <button phx-throttle="1000" phx-click={JS.push("video:play", value: %{video_id: video.id})} class="text-white hover:text-blue-300">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -48,6 +57,14 @@
                   </div>
                 </div>
 
+              <% %Download{} -> %>
+                <div class="rounded-md text-white focus:outline-none">
+                  <div class="py-3 px-2 flex flex-col justify-center">
+                    <span class="text-3xl font-medium">Download Starting...</span>
+                  </div>
+                </div>
+
+
               <% nil -> %>
                 <fieldset class="mt-2">
                   <legend class="sr-only">
@@ -55,7 +72,7 @@
                   </legend>
                   <div class="grid grid-cols-3 gap-4">
                     <%= for format <- download_options(video.youtube_video.formats) do %>
-                      <label phx-throttle="1000" phx-click={JS.push("download", value: %{video_id: video.id, format_id: format.id})} class="rounded-md cursor-pointer border border-gray-200 text-white hover:text-blue-400 hover:border-blue-300 focus:outline-none">
+                      <label phx-throttle="1000" phx-click={JS.push("video:download", value: %{video_id: video.id, format_id: format.id})} class="rounded-md cursor-pointer border border-gray-200 text-white hover:text-blue-400 hover:border-blue-300 focus:outline-none">
                         <input type="radio" name="format-option" {[value: format.id]} class="sr-only" aria-labelledby="memory-option-0-label">
                         <div id="format-option-0-label" class="py-3 px-2 flex flex-col">
                           <span class="text-3xl font-medium"><%= format_resolution(format) %></span>

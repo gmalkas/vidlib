@@ -15,7 +15,7 @@ defmodule Vidlib.Video do
   ]
 
   def has_active_download?(%__MODULE__{} = video) do
-    !is_nil(video.download) && Download.active?(video.download)
+    !is_nil(video.download) && Download.in_progress?(video.download)
   end
 
   def new(%Youtube.Video{} = video) do

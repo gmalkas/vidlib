@@ -8,6 +8,7 @@ defmodule VidlibWeb.FeedLive do
   alias Vidlib.{
     Database,
     Download,
+    Event,
     Feed,
     Feeder,
     Pagination,
@@ -22,6 +23,8 @@ defmodule VidlibWeb.FeedLive do
   @default_page_size 9
 
   def mount(params, _, socket) do
+    :ok = Event.Dispatcher.subscribe(self())
+
     page_number = Map.get(params, "page", "1") |> String.to_integer()
     page = load_video_page(page_number)
 
@@ -62,7 +65,7 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, assign(socket, refreshing_feed: {0, Database.count(Subscription)})}
   end
 
-  def handle_event("play", %{"video_id" => video_id}, socket) do
+  def handle_event("video:play", %{"video_id" => video_id}, socket) do
     video = Database.get(Video, video_id)
 
     if !is_nil(video.download) do
@@ -99,7 +102,7 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def handle_event("download", video_details, socket) do
+  def handle_event("video:download", video_details, socket) do
     %{"video_id" => video_id, "format_id" => format_id} = video_details
 
     video = Database.get(Video, video_id)
@@ -150,8 +153,50 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, assign(socket, refreshing_feed: nil, refreshed_at: refreshed_at)}
   end
 
-  def download(video, downloads) do
-    Enum.find(downloads, &(&1.id == video.id))
+  def handle_info({:video, :new, _}, socket) do
+    page = load_video_page(socket.assigns.page_number)
+
+    {:noreply, assign(socket, page: page)}
+  end
+
+  def handle_info({:download, _, _}, socket) do
+    page = load_video_page(socket.assigns.page_number)
+    downloads = load_ongoing_downloads()
+
+    {:noreply, assign(socket, downloads: downloads, page: page)}
+  end
+
+  def handle_info(_, socket) do
+    {:noreply, socket}
+  end
+
+  def has_download?(video) do
+    !is_nil(video.download)
+  end
+
+  def download_status_color(download) do
+    cond do
+      Download.failed?(download) -> "bg-red-500"
+      true -> "bg-blue-500"
+    end
+  end
+
+  def download_progress(download) do
+    cond do
+      Download.in_progress?(download) -> download.progress.progress
+      Download.failed?(download) -> 10
+      true -> 0
+    end
+  end
+
+  def video_overlay_class(video) do
+    visible? = !is_nil(video.download) && Download.in_progress?(video.download)
+
+    if visible? do
+      "opacity-100"
+    else
+      "opacity-0"
+    end
   end
 
   def format_video_count(_page_size, 0), do: "No videos"

@@ -5,6 +5,8 @@ module.exports = {
   purge: [
     '../lib/vidlib_web/templates/**/*.html.*',
     '../lib/vidlib_web/live/*.html.heex',
+    '../lib/vidlib_web/live/*.ex',
+    '../lib/vidlib_web/live/**/*.ex',
     '../lib/vidlib_web/views/**/*.ex',
     './js/**/*.{js,jsx,ts,tsx}',
   ],
