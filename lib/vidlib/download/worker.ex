@@ -86,10 +86,11 @@ defmodule Vidlib.Download.Worker do
     Downloader.download(downloads_path(), video, video_format_id, audio_format_id, fn
       :ok ->
         download = Download.completed(download)
-        GenServer.cast(parent_pid, {:done, download})
 
         Database.put(Video.with_download(video, download))
         Database.save()
+
+        GenServer.cast(parent_pid, {:done, download})
 
         Logger.info(
           "Completed download of '#{video.title}' (#{elem(video_format.resolution, 1)}p)"
@@ -97,10 +98,11 @@ defmodule Vidlib.Download.Worker do
 
       {:error, _status} ->
         download = Download.failed(download)
-        GenServer.cast(parent_pid, {:failed, download})
 
         Database.put(Video.with_download(video, Download.failed(download)))
         Database.save()
+
+        GenServer.cast(parent_pid, {:failed, download})
 
         Logger.info("Failed download of '#{video.title}' (#{elem(video_format.resolution, 1)}p)")
 
@@ -113,10 +115,10 @@ defmodule Vidlib.Download.Worker do
             eta: eta
           })
 
-        GenServer.cast(parent_pid, {:progress, download})
-
         Database.put(Video.with_download(video, download))
         Database.save()
+
+        GenServer.cast(parent_pid, {:progress, download})
 
         Logger.info(
           "Downloading '#{video.title}' (#{elem(video_format.resolution, 1)}p) (#{filetype}): #{progress}% at #{download_speed} (ETA #{eta})"
