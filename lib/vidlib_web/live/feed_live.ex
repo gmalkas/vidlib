@@ -102,6 +102,22 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
+  def handle_event("download:pause", %{"video_id" => video_id}, socket) do
+    :ok = Download.Manager.pause(video_id)
+
+    send(self(), :refresh_downloads)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("download:resume", %{"video_id" => video_id}, socket) do
+    :ok = Download.Manager.resume(video_id)
+
+    send(self(), :refresh_downloads)
+
+    {:noreply, socket}
+  end
+
   def handle_event("video:download", video_details, socket) do
     %{"video_id" => video_id, "format_id" => format_id} = video_details
 
@@ -129,7 +145,7 @@ defmodule VidlibWeb.FeedLive do
           ])
       )
 
-    {:ok, _} = Download.Manager.download(Video.with_download(video, download))
+    {:ok, _} = Download.Manager.start(Video.with_download(video, download))
 
     {:noreply, socket}
   end
@@ -170,16 +186,9 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def has_download_in_progress?(video) do
-    !is_nil(video.download)
-  end
-
-  def has_completed_download?(video) do
-    !is_nil(video.download) && Download.completed?(video.download)
-  end
-
   def download_status_color(download) do
     cond do
+      Download.paused?(download) -> "bg-gray-500"
       Download.failed?(download) -> "bg-red-500"
       true -> "bg-blue-500"
     end
@@ -187,8 +196,7 @@ defmodule VidlibWeb.FeedLive do
 
   def download_progress(download) do
     cond do
-      Download.in_progress?(download) -> download.progress.progress
-      Download.failed?(download) -> 10
+      Download.has_progress?(download) -> download.progress.progress
       true -> 0
     end
   end

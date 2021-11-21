@@ -11,8 +11,32 @@ defmodule Vidlib.Download.Manager do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def download(%Video{} = video) do
+  def start(%Video{} = video) do
     start_worker(video)
+  end
+
+  def pause(video_id) do
+    with {:ok, worker_pid} <- worker_pid(video_id) do
+      :ok = Download.Worker.cancel(worker_pid)
+    end
+
+    video = Database.get(Video, video_id)
+    Database.put(Video.with_download(video, Download.paused(video.download)))
+    Database.save()
+
+    :ok
+  end
+
+  def resume(video_id) do
+    video = Database.get(Video, video_id)
+    video = Video.with_download(video, Download.resumed(video.download))
+
+    Database.put(video)
+    Database.save()
+
+    with {:ok, _} <- start_worker(video) do
+      :ok
+    end
   end
 
   def cancel(video_id) do
@@ -42,7 +66,7 @@ defmodule Vidlib.Download.Manager do
   def handle_continue(:resume_downloads, state) do
     videos_with_suspended_download =
       Database.all(Video)
-      |> Enum.filter(&Video.download_in_progress?/1)
+      |> Enum.filter(&(Video.download_started?(&1) && !Video.download_paused?(&1)))
 
     video_count = length(videos_with_suspended_download)
 

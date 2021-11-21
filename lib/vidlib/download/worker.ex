@@ -78,10 +78,10 @@ defmodule Vidlib.Download.Worker do
     video_format = Enum.find(video.youtube_video.formats, &(&1.id == video_format_id))
     formatted_resolution = "#{elem(video_format.resolution, 1)}p"
 
-    Database.put(Video.with_download(video, download))
-    Event.Dispatcher.publish({:download, :started, video.download.id})
-
     Logger.info("Downloading '#{video.title}' (#{formatted_resolution})")
+
+    Database.put(Video.with_download(video, Download.started(download)))
+    Event.Dispatcher.publish({:download, :started, video.download.id})
 
     Downloader.download(downloads_path(), video, video_format_id, audio_format_id, fn
       :ok ->

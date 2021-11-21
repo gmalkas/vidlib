@@ -14,8 +14,20 @@ defmodule Vidlib.Video do
     :duration
   ]
 
+  def download_completed?(%__MODULE__{} = video) do
+    !is_nil(video.download) && Download.completed?(video.download)
+  end
+
   def download_in_progress?(%__MODULE__{} = video) do
     !is_nil(video.download) && Download.in_progress?(video.download)
+  end
+
+  def download_started?(%__MODULE__{} = video) do
+    !is_nil(video.download) && !Download.completed?(video.download)
+  end
+
+  def download_paused?(%__MODULE__{} = video) do
+    !is_nil(video.download) && Download.paused?(video.download)
   end
 
   def new(%Youtube.Video{} = video) do

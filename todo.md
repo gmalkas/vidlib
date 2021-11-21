@@ -8,7 +8,7 @@
  [x] Auto-resume download after crash/reboot
  [ ] Parallel downloads with aggregate progress
  [ ] Download queue
- [ ] Download pause/resume
+ [x] Download pause/resume
  [ ] List/Grid view
  [ ] Filter to view only downloaded videos
  [ ] Infinite scrolling pagination
