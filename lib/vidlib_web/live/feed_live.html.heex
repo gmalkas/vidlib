@@ -1,4 +1,7 @@
-<div class="flex items-center justify-end">
+<div class="flex items-center justify-between">
+  <div>
+    <span class="text-sm font-medium text-gray-900"><%= format_video_count(@page.size, @page.total_entry_count) %></span>
+  </div>
   <div class="group flex items-center space-x-4">
     <span class="hidden group-hover:block text-sm font-medium text-gray-700"><%= format_refreshed_at(@refreshed_at) %></span>
     <span class="text-sm font-bold text-gray-700"><%= format_refresh_progress(@refreshing_feed) %></span>
@@ -18,14 +21,14 @@
         <img {[src: thumbnail_url(video)]} width="512" class="shadow-md rounded-lg" />
         <div class="opacity-0 absolute inset-0 p-4 group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition">
           <div class="h-full flex items-center justify-center">
-            <%= case download(video, @downloads) do %>
+            <%= case video.download do %>
               <% %Download{progress: %{} = progress} = download -> %>
                 <div class="rounded-md text-white focus:outline-none">
                   <div class="py-3 px-2 flex flex-col justify-center">
                     <span class="text-3xl font-medium">Downloading <%= progress.filetype %>...</span>
                     <span class="text-3xl font-medium"><%= format_resolution(download.format) %></span>
                     <span class="text-sm"><%= progress.progress %>% <%= format_filesize(download.format.size) %></span>
-                    <button phx-throttle="1000" phx-click={JS.push("download:cancel", value: %{download_id: download.id})} class="cursor-pointer text-xl font-medium text-white hover:text-blue-300">Cancel</button>
+                    <button phx-throttle="1000" phx-click={JS.push("download:cancel", value: %{video_id: video.id})} class="cursor-pointer text-xl font-medium text-white hover:text-blue-300">Cancel</button>
                   </div>
                 </div>
 
@@ -37,11 +40,11 @@
                   </svg>
                 </button>
 
-              <% %Download{} = download -> %>
+              <% %Download{failed_at: failed_at} when not(is_nil(failed_at)) -> %>
                 <div class="rounded-md text-red-500 focus:outline-none">
                   <div class="py-3 px-2 flex flex-col justify-center">
                     <span class="text-3xl font-medium">Download Failed</span>
-                    <button phx-throttle="1000" phx-click={JS.push("download:delete", value: %{download_id: download.id})} class="cursor-pointer text-xl font-medium text-white hover:text-blue-300">Retry</button>
+                    <button phx-throttle="1000" phx-click={JS.push("download:delete", value: %{video_id: video.id})} class="cursor-pointer text-xl font-medium text-white hover:text-blue-300">Retry</button>
                   </div>
                 </div>
 

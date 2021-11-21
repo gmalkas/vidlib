@@ -9,7 +9,15 @@ defmodule Vidlib.Application do
   def start(_type, _args) do
     children = [
       {Finch, name: Crawler},
+      {Task.Supervisor, name: Vidlib.Download.TaskSupervisor},
       Vidlib.Database,
+      {Registry, keys: :unique, name: Registry.Download.Worker},
+      %{
+        id: Vidlib.Download.Supervisor,
+        start:
+          {DynamicSupervisor, :start_link,
+           [[strategy: :one_for_one, name: Vidlib.Download.Supervisor]]}
+      },
       # Start the Telemetry supervisor
       VidlibWeb.Telemetry,
       # Start the PubSub system

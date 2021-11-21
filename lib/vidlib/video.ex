@@ -3,6 +3,7 @@ defmodule Vidlib.Video do
 
   defstruct [
     :id,
+    :feed_id,
     :title,
     :download,
     :thumbnail,
@@ -13,9 +14,14 @@ defmodule Vidlib.Video do
     :duration
   ]
 
+  def has_active_download?(%__MODULE__{} = video) do
+    !is_nil(video.download) && Download.active?(video.download)
+  end
+
   def new(%Youtube.Video{} = video) do
     %__MODULE__{
       id: video.id,
+      feed_id: video.channel_id,
       title: video.title,
       published_at: video.published_at,
       duration: video.duration,
@@ -31,5 +37,9 @@ defmodule Vidlib.Video do
 
   def with_thumbnail(%__MODULE__{} = video, thumbnail_data_url) do
     %__MODULE__{video | thumbnail: thumbnail_data_url}
+  end
+
+  def drop_download(%__MODULE__{} = video) do
+    %__MODULE__{video | download: nil}
   end
 end

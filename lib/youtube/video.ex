@@ -6,6 +6,7 @@ defmodule Youtube.Video do
     :thumbnail,
     :thumbnails,
     :id,
+    :channel_id,
     :description,
     :published_at,
     :link,
@@ -15,6 +16,7 @@ defmodule Youtube.Video do
 
   def from_atom(entry) do
     ["yt:video:" <> id] = entry[:value] |> Enum.find(&(&1[:name] == :id)) |> Map.get(:value)
+    [channel_id] = entry[:value] |> Enum.find(&(&1[:name] == :"yt:channelId")) |> Map.get(:value)
     [title] = entry[:value] |> Enum.find(&(&1[:name] == :title)) |> Map.get(:value)
     link = entry[:value] |> Enum.find(&(&1[:name] == :link)) |> get_in([:attr, :href])
     [published_at_raw] = entry[:value] |> Enum.find(&(&1[:name] == :published)) |> Map.get(:value)
@@ -30,6 +32,7 @@ defmodule Youtube.Video do
 
     %__MODULE__{
       id: id,
+      channel_id: channel_id,
       title: title,
       link: link,
       description: description,

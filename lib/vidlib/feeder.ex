@@ -28,45 +28,35 @@ defmodule Vidlib.Feeder do
     |> Enum.each(fn {subscription, index} ->
       feed = load(subscription.feed_url)
 
-      {existing_videos, new_videos} =
+      new_videos =
         case Database.get(feed) do
           %Feed{} = cached_feed ->
-            existing_video_ids =
-              cached_feed.videos
-              |> Enum.map(& &1.id)
-              |> MapSet.new()
-
-            {
-              cached_feed.videos,
-              Enum.reject(feed.videos, &MapSet.member?(existing_video_ids, &1.id))
-            }
+            Enum.reject(feed.videos, &MapSet.member?(cached_feed.video_ids, &1.id))
 
           _ ->
-            {[], feed.videos}
+            feed.videos
         end
 
       new_videos_count = length(new_videos)
 
-      new_videos_with_metadata =
-        new_videos
-        |> Enum.with_index(1)
-        |> Enum.map(fn {video, index} ->
-          Logger.info(
-            "[#{feed.name}] [#{index}/#{new_videos_count}] Downloading metadata: #{video.title}"
-          )
+      new_videos
+      |> Enum.with_index(1)
+      |> Enum.each(fn {video, index} ->
+        Logger.info(
+          "[#{feed.name}] [#{index}/#{new_videos_count}] Downloading metadata: #{video.title}"
+        )
 
-          youtube_video = Youtube.Video.with_metadata(video.youtube_video)
+        youtube_video = Youtube.Video.with_metadata(video.youtube_video)
 
-          youtube_video
-          |> Video.new()
-          |> Video.with_thumbnail(Downloader.thumbnail_as_data_url(youtube_video))
-        end)
+        youtube_video
+        |> Video.new()
+        |> Video.with_thumbnail(Downloader.thumbnail_as_data_url(youtube_video))
+        |> Database.put()
+      end)
 
       updated_feed =
-        Feed.put_videos(
-          feed,
-          Enum.concat(new_videos_with_metadata, existing_videos)
-        )
+        feed
+        |> Feed.without_videos()
         |> Feed.refreshed()
 
       Database.put(updated_feed)

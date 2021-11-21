@@ -5,7 +5,16 @@ defmodule VidlibWeb.FeedLive do
 
   alias Phoenix.LiveView.JS
 
-  alias Vidlib.{Database, Download, Downloader, Feed, Feeder, Pagination, Player, Subscription}
+  alias Vidlib.{
+    Database,
+    Download,
+    Feed,
+    Feeder,
+    Pagination,
+    Player,
+    Subscription,
+    Video
+  }
 
   @preferred_container_format "webm"
   @preferred_video_codec "vp9"
@@ -16,12 +25,13 @@ defmodule VidlibWeb.FeedLive do
     page_number = Map.get(params, "page", "1") |> String.to_integer()
     page = load_video_page(page_number)
 
-    downloads = Database.all(Download)
+    downloads = load_ongoing_downloads()
     refreshed_at = Feeder.last_refreshed_at()
 
     {:ok,
      assign(socket,
        page: page,
+       page_number: page_number,
        downloads: downloads,
        refreshed_at: refreshed_at,
        refreshing_feed: nil
@@ -34,7 +44,8 @@ defmodule VidlibWeb.FeedLive do
 
     {:noreply,
      assign(socket,
-       page: page
+       page: page,
+       page_number: page_number
      )}
   end
 
@@ -52,15 +63,19 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def handle_event("play", %{"video_id" => video_id}, socket) do
-    download =
-      Database.all(Download)
-      |> Enum.find(&(&1.id == video_id))
+    video = Database.get(Video, video_id)
 
-    if !is_nil(download) do
+    if !is_nil(video.download) do
       Task.start(fn ->
-        case Player.play(download) do
-          {:error, :not_found} -> Database.delete(download)
-          _ -> :ok
+        case Player.play(video.download) do
+          {:error, :not_found} ->
+            Database.put(Video.drop_download(video))
+            Database.save()
+
+            send(self(), :refresh_downloads)
+
+          _ ->
+            :ok
         end
       end)
     end
@@ -68,30 +83,26 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def handle_event("download:delete", %{"download_id" => download_id}, socket) do
-    Database.delete({Download, download_id})
-    Database.save()
-    downloads = Database.all(Download)
+  def handle_event("download:delete", %{"video_id" => video_id}, socket) do
+    :ok = Download.Manager.delete(video_id)
 
-    {:noreply, assign(socket, downloads: downloads)}
+    send(self(), :refresh_downloads)
+
+    {:noreply, socket}
   end
 
-  def handle_event("download:cancel", %{"download_id" => download_id}, socket) do
-    Database.delete({Download, download_id})
-    Database.save()
-    downloads = Database.all(Download)
+  def handle_event("download:cancel", %{"video_id" => video_id}, socket) do
+    :ok = Download.Manager.cancel(video_id)
 
-    {:noreply, assign(socket, downloads: downloads)}
+    send(self(), :refresh_downloads)
+
+    {:noreply, socket}
   end
 
   def handle_event("download", video_details, socket) do
     %{"video_id" => video_id, "format_id" => format_id} = video_details
 
-    video =
-      Database.all(Youtube.Channel)
-      |> Enum.flat_map(& &1.videos)
-      |> Enum.find(&(&1.id == video_id))
-
+    video = Database.get(Video, video_id)
     video_format = Enum.find(video.youtube_video.formats, &(&1.id == format_id))
 
     audio_format =
@@ -100,10 +111,6 @@ defmodule VidlibWeb.FeedLive do
         &(&1.audio_codec == @preferred_audio_codec && !&1.video?)
       )
       |> Enum.max_by(& &1.size)
-
-    formatted_resolution = "#{elem(video_format.resolution, 1)}p"
-
-    myself = self()
 
     download =
       Download.new(
@@ -119,60 +126,22 @@ defmodule VidlibWeb.FeedLive do
           ])
       )
 
-    Task.start(fn ->
-      Logger.info("Downloading '#{video.title}' (#{formatted_resolution})")
-
-      Downloader.download(downloads_path(), video, format_id, audio_format.id, fn
-        :ok ->
-          Database.put(Download.completed(download))
-          Database.save()
-
-          Logger.info(
-            "Completed download of '#{video.title}' (#{elem(video_format.resolution, 1)}p)"
-          )
-
-          send(myself, :refresh_downloads)
-
-        {:error, _status} ->
-          Database.put(Download.failed(download))
-
-          Logger.info(
-            "Failed download of '#{video.title}' (#{elem(video_format.resolution, 1)}p)"
-          )
-
-          send(myself, :refresh_downloads)
-
-        {:progress, progress, filetype, download_speed, eta} ->
-          Database.put(
-            Download.with_progress(download, %{
-              progress: progress,
-              filetype: filetype,
-              download_speed: download_speed,
-              eta: eta
-            })
-          )
-
-          Logger.info(
-            "Downloading '#{video.title}' (#{elem(video_format.resolution, 1)}p) (#{filetype}): #{progress}% at #{download_speed} (ETA #{eta})"
-          )
-
-          send(myself, :refresh_downloads)
-      end)
-    end)
+    {:ok, _} = Download.Manager.download(Video.with_download(video, download))
 
     {:noreply, socket}
   end
 
   def handle_info({:feed_refreshed, index, count}, socket) do
-    page = load_video_page(1)
+    page = load_video_page(socket.assigns.page_number)
 
     {:noreply, assign(socket, page: page, refreshing_feed: {index, count})}
   end
 
   def handle_info(:refresh_downloads, socket) do
-    downloads = Database.all(Download)
+    page = load_video_page(socket.assigns.page_number)
+    downloads = load_ongoing_downloads()
 
-    {:noreply, assign(socket, downloads: downloads)}
+    {:noreply, assign(socket, downloads: downloads, page: page)}
   end
 
   def handle_info(:feed_refreshed, socket) do
@@ -183,6 +152,19 @@ defmodule VidlibWeb.FeedLive do
 
   def download(video, downloads) do
     Enum.find(downloads, &(&1.id == video.id))
+  end
+
+  def format_video_count(_page_size, 0), do: "No videos"
+
+  def format_video_count(page_size, video_count) do
+    video_label =
+      if video_count == 1 do
+        "video"
+      else
+        "videos"
+      end
+
+    "Showing #{page_size} of #{video_count} #{video_label}"
   end
 
   def format_refresh_progress(nil), do: ""
@@ -243,14 +225,20 @@ defmodule VidlibWeb.FeedLive do
   def refresh_button_class({_, _}), do: "refresh-button refreshing"
 
   defp load_video_page(page_number) do
-    feeds = Database.all(Feed)
-
     videos =
-      feeds
-      |> Enum.flat_map(&Enum.map(&1.videos, fn video -> {&1, video} end))
+      Database.all(Video)
+      |> Enum.map(&{Database.get(Feed, &1.feed_id), &1})
       |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
 
     Pagination.paginate(videos, @default_page_size, page_number)
+  end
+
+  defp load_ongoing_downloads do
+    Database.all(Video)
+    |> Enum.filter(&Video.has_active_download?/1)
+    |> Enum.map(&{Database.get(Feed, &1.feed_id), &1})
+    |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
+    |> Enum.map(fn {feed, video} -> {feed, video, video.download} end)
   end
 
   defp interesting_resolution?({_, height}) do

@@ -1,11 +1,13 @@
 defmodule Vidlib.Downloader do
   require Logger
 
+  alias Vidlib.Video
+
   @filename_template "%(title)s-%(id)s.%(ext)s"
 
   def download(
         destination_directory,
-        %Youtube.Video{} = video,
+        %Video{} = video,
         video_format_id,
         audio_format_id,
         progress_callback \\ fn _ -> :ok end
@@ -59,7 +61,8 @@ defmodule Vidlib.Downloader do
          callback,
          video_format_id,
          audio_format_id,
-         video_or_audio \\ nil
+         video_or_audio \\ nil,
+         buffer \\ ""
        ) do
     receive do
       {^port, {:data, "[download] Destination" <> _ = data}} ->
@@ -88,13 +91,21 @@ defmodule Vidlib.Downloader do
 
         handle_download_progress(port, callback, video_format_id, audio_format_id, video_or_audio)
 
-      {^port, {:data, _data}} ->
-        handle_download_progress(port, callback, video_format_id, audio_format_id, video_or_audio)
+      {^port, {:data, data}} ->
+        handle_download_progress(
+          port,
+          callback,
+          video_format_id,
+          audio_format_id,
+          video_or_audio,
+          buffer <> data
+        )
 
       {^port, {:exit_status, 0}} ->
         callback.(:ok)
 
       {^port, {:exit_status, status}} ->
+        Logger.error(buffer)
         callback.({:error, status})
     end
   end

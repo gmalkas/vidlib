@@ -12,6 +12,10 @@ defmodule Vidlib.Download do
     :last_progress_at
   ]
 
+  def active?(%__MODULE__{} = download) do
+    !is_nil(download.progress)
+  end
+
   def new(params) do
     struct!(__MODULE__, params)
   end

@@ -3,8 +3,9 @@
  [x] Page-based pagination
  [x] Download thumbnails and use local ones instead of URLs
  [ ] Show download progress
- [ ] Cancel download
+ [x] Cancel download
  [ ] Delete download
+ [ ] Auto-resume download after crash
  [ ] Parallel downloads with aggregate progress
  [ ] List/Grid view
  [ ] Filter to view only downloaded videos

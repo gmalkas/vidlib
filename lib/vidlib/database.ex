@@ -8,9 +8,11 @@ defmodule Vidlib.Database do
   end
 
   def all(schema) do
+    key_prefix = schema_key_prefix(schema)
+
     :ets.tab2list(__MODULE__)
     |> Enum.filter(fn
-      {{^schema, _}, _} -> true
+      {key, _} when is_binary(key) -> String.starts_with?(key, key_prefix)
       _ -> false
     end)
     |> Enum.map(fn {_, v} -> v end)
@@ -22,8 +24,12 @@ defmodule Vidlib.Database do
 
   def count(schema), do: Enum.count(all(schema))
 
-  def get(%schema{id: id}) do
-    get({schema, id})
+  def get(schema, id) when is_atom(schema) do
+    get(object_key(schema, id))
+  end
+
+  def get(%_schema_{} = object) do
+    get(object_key(object))
   end
 
   def get(key) do
@@ -38,8 +44,8 @@ defmodule Vidlib.Database do
     |> Enum.each(&delete/1)
   end
 
-  def delete(%schema{id: id}) do
-    delete({schema, id})
+  def delete(%_schema_{} = object) do
+    delete(object_key(object))
   end
 
   def delete(key) do
@@ -50,8 +56,8 @@ defmodule Vidlib.Database do
     GenServer.call(__MODULE__, {:merge, key, value})
   end
 
-  def put(%schema{id: id} = value) do
-    put({schema, id}, value)
+  def put(%_schema_{} = value) do
+    put(object_key(value), value)
   end
 
   def put(key, value) do
@@ -126,8 +132,9 @@ defmodule Vidlib.Database do
 
   defp put_in_cache(tid, key, value), do: :ets.insert(tid, {key, value})
 
-  defp store_cache_file(tid),
-    do: :ets.tab2file(tid, String.to_charlist(file_path()), sync: true)
+  defp store_cache_file(tid) do
+    :ets.tab2file(tid, String.to_charlist(file_path()), sync: true)
+  end
 
   defp file_path() do
     Path.join(
@@ -135,4 +142,8 @@ defmodule Vidlib.Database do
       "vidlib.ets"
     )
   end
+
+  defp object_key(schema, id), do: schema_key_prefix(schema) <> "_" <> id
+  defp object_key(%schema{id: id}), do: schema_key_prefix(schema) <> "_" <> id
+  defp schema_key_prefix(schema), do: schema |> to_string() |> String.downcase()
 end
