@@ -18,8 +18,16 @@
   <%= for {channel, video} <- @page.entries do %>
     <li class="block rounded-md space-y-4">
       <div class="group relative">
-        <%= if has_download?(video) do %>
+        <%= if has_download_in_progress?(video) do %>
           <VidlibWeb.FeedLive.ProgressBarComponent.render color={download_status_color(video.download)} progress={download_progress(video.download)} />
+        <% end %>
+        <%= if has_completed_download?(video) do %>
+          <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-blue-500 text-blue-100"}>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         <% end %>
         <img {[src: thumbnail_url(video)]} width="512" class="shadow-md rounded-lg" />
         <div class={"#{video_overlay_class(video)} absolute inset-0 z-10 p-4 rounded-md group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition"}>
@@ -41,13 +49,19 @@
                   </div>
                 </div>
 
-              <% %Download{completed_at: completed_at} when not(is_nil(completed_at)) -> %>
-                <button phx-throttle="1000" phx-click={JS.push("video:play", value: %{video_id: video.id})} class="text-white hover:text-blue-300">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
+              <% %Download{completed_at: completed_at} = download when not(is_nil(completed_at)) -> %>
+                  <div class="py-3 px-2 h-full flex flex-col items-center justify-around">
+                    <button phx-throttle="1000" phx-click={JS.push("video:play", value: %{video_id: video.id})} class="inline-flex px-3 py-2 items-center text-white border-4 border-gray-200 rounded-md hover:text-blue-300 hover:border-blue-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="-ml-1 mr-3 h-14 w-14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span class="text-3xl font-bold"><%= format_resolution(download.format) %></span>
+                    </button>
+                    <button phx-throttle="1000" phx-click={JS.push("download:delete", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-white border border-gray-200 hover:text-red-500 hover:border-red-500">
+                      Remove
+                    </button>
+                  </div>
 
               <% %Download{failed_at: failed_at} when not(is_nil(failed_at)) -> %>
                 <div class="rounded-md text-red-500 focus:outline-none">

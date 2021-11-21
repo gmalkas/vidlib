@@ -4,7 +4,7 @@
  [x] Download thumbnails and use local ones instead of URLs
  [x] Show download progress
  [x] Cancel download
- [ ] Delete download
+ [x] Delete download
  [ ] Auto-resume download after crash/reboot
  [ ] Parallel downloads with aggregate progress
  [ ] Download queue

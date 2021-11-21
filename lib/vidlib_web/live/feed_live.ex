@@ -170,8 +170,12 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def has_download?(video) do
+  def has_download_in_progress?(video) do
     !is_nil(video.download)
+  end
+
+  def has_completed_download?(video) do
+    !is_nil(video.download) && Download.completed?(video.download)
   end
 
   def download_status_color(download) do
