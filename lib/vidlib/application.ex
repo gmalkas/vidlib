@@ -19,6 +19,7 @@ defmodule Vidlib.Application do
           {DynamicSupervisor, :start_link,
            [[strategy: :one_for_one, name: Vidlib.Download.Supervisor]]}
       },
+      Vidlib.Download.Manager,
       # Start the Telemetry supervisor
       VidlibWeb.Telemetry,
       # Start the PubSub system

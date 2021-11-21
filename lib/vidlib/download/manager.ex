@@ -1,5 +1,15 @@
 defmodule Vidlib.Download.Manager do
+  use GenServer
+
+  require Logger
+
   alias Vidlib.{Database, Download, Video}
+
+  # API
+
+  def start_link(_args) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
 
   def download(%Video{} = video) do
     start_worker(video)
@@ -20,6 +30,34 @@ defmodule Vidlib.Download.Manager do
 
     :ok
   end
+
+  # CALLBACKS
+
+  def init(_args) do
+    Process.monitor(Vidlib.Download.Supervisor)
+
+    {:ok, nil, {:continue, :resume_downloads}}
+  end
+
+  def handle_continue(:resume_downloads, state) do
+    videos_with_suspended_download =
+      Database.all(Video)
+      |> Enum.filter(&Video.download_in_progress?/1)
+
+    video_count = length(videos_with_suspended_download)
+
+    if video_count > 0 do
+      Logger.info("Resuming downloads for #{video_count} videos...")
+
+      Enum.each(videos_with_suspended_download, fn video ->
+        {:ok, _} = start_worker(video)
+      end)
+    end
+
+    {:noreply, state}
+  end
+
+  # HELPERS
 
   defp worker_pid(video_id) do
     case Registry.lookup(Registry.Download.Worker, video_id) do

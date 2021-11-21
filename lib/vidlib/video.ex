@@ -14,7 +14,7 @@ defmodule Vidlib.Video do
     :duration
   ]
 
-  def has_active_download?(%__MODULE__{} = video) do
+  def download_in_progress?(%__MODULE__{} = video) do
     !is_nil(video.download) && Download.in_progress?(video.download)
   end
 

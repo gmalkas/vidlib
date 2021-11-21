@@ -284,7 +284,7 @@ defmodule VidlibWeb.FeedLive do
 
   defp load_ongoing_downloads do
     Database.all(Video)
-    |> Enum.filter(&Video.has_active_download?/1)
+    |> Enum.filter(&Video.download_in_progress?/1)
     |> Enum.map(&{Database.get(Feed, &1.feed_id), &1})
     |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
     |> Enum.map(fn {feed, video} -> {feed, video, video.download} end)

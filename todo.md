@@ -5,7 +5,7 @@
  [x] Show download progress
  [x] Cancel download
  [x] Delete download
- [ ] Auto-resume download after crash/reboot
+ [x] Auto-resume download after crash/reboot
  [ ] Parallel downloads with aggregate progress
  [ ] Download queue
  [ ] Download pause/resume
@@ -14,6 +14,7 @@
  [ ] Infinite scrolling pagination
  [ ] In-browser player
  [ ] Open native player
+ [ ] View channel
 
 # Settings
  [ ] First launch setup experience
