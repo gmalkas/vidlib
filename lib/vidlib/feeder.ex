@@ -37,6 +37,8 @@ defmodule Vidlib.Feeder do
             feed.videos
         end
 
+      Database.put(Feed.without_videos(feed))
+
       new_videos_count = length(new_videos)
 
       new_videos

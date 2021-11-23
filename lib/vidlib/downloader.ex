@@ -3,23 +3,19 @@ defmodule Vidlib.Downloader do
 
   alias Vidlib.Video
 
-  @filename_template "%(title)s-%(id)s.%(ext)s"
-
   def download(
-        destination_directory,
+        file_output_template,
         %Video{} = video,
         video_format_id,
         audio_format_id,
         progress_callback \\ fn _ -> :ok end
       ) do
-    path_template = Path.join(destination_directory, @filename_template)
-
     args = [
       "--newline",
       "-f",
       "#{video_format_id}+#{audio_format_id}",
       "-o",
-      path_template,
+      file_output_template,
       video.link
     ]
 
@@ -78,18 +74,39 @@ defmodule Vidlib.Downloader do
         end
 
       {^port, {:data, "[download]" <> _ = data}} ->
-        case Regex.run(
-               ~r/^\[download\]\s+(\d+\.\d+)%\s+of\s+(\d+\.\d+\w+)\s+at\s+(\d+\.\d+\w+\/s)\s+ETA\s+(.*)/,
-               data
-             ) do
-          [_, progress, _, download_speed, eta] ->
-            callback.({:progress, String.to_float(progress), video_or_audio, download_speed, eta})
+        if String.contains?(data, "has already been downloaded and merged") do
+          [_, file_path] =
+            Regex.run(~r/^\[download\] (.*) has already been downloaded and merged$/, data)
 
-          nil ->
-            :ok
+          callback.({:ok, file_path})
+
+          :ok
+        else
+          case Regex.run(
+                 ~r/^\[download\]\s+(\d+\.\d+)%\s+of\s+(\d+\.\d+\w+)\s+at\s+(\d+\.\d+\w+\/s)\s+ETA\s+(.*)/,
+                 data
+               ) do
+            [_, progress, _, download_speed, eta] ->
+              callback.(
+                {:progress, String.to_float(progress), video_or_audio, download_speed, eta}
+              )
+
+            nil ->
+              :ok
+          end
+
+          handle_download_progress(
+            port,
+            callback,
+            video_format_id,
+            audio_format_id,
+            video_or_audio
+          )
         end
 
-        handle_download_progress(port, callback, video_format_id, audio_format_id, video_or_audio)
+      {^port, {:data, "Merging formats into" <> _ = data}} ->
+        [_, file_path] = Regex.run(~r/"(.*)"/, data)
+        callback.({:ok, file_path})
 
       {^port, {:data, data}} ->
         handle_download_progress(
@@ -102,7 +119,7 @@ defmodule Vidlib.Downloader do
         )
 
       {^port, {:exit_status, 0}} ->
-        callback.(:ok)
+        :ok
 
       {^port, {:exit_status, status}} ->
         Logger.error(buffer)

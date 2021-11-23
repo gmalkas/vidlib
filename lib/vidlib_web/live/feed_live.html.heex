@@ -1,6 +1,12 @@
 <div class="flex items-center justify-between">
-  <div>
+  <div class="flex items-center space-x-2">
     <span class="text-sm font-medium text-gray-900"><%= format_video_count(@page.size, @page.total_entry_count) %></span>
+    <%= if length(@downloads) > 0 do %>
+      <span>&middot;</span>
+      <span>
+        <%= length(@downloads) %> downloads in progress (<%= format_aggregate_download_progress(@downloads) %>%)
+      </span>
+    <% end %>
   </div>
   <div class="group flex items-center space-x-4">
     <span class="hidden group-hover:block text-sm font-medium text-gray-700"><%= format_refreshed_at(@refreshed_at) %></span>
@@ -21,20 +27,30 @@
         <%= if Video.download_started?(video) && !Video.download_completed?(video) do %>
           <VidlibWeb.FeedLive.ProgressBarComponent.render color={download_status_color(video.download)} progress={download_progress(video.download)} />
         <% end %>
-        <%= if Video.download_paused?(video) do %>
-          <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-gray-500 text-gray-100"}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        <% end %>
-        <%= if Video.download_completed?(video) do %>
-          <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-blue-500 text-blue-100"}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
+        <%= cond do %>
+          <% Video.download_queued?(video) -> %>
+            <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-gray-500 text-gray-100"}>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" />
+              </svg>
+            </div>
+
+          <% Video.download_paused?(video) -> %>
+            <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-gray-500 text-gray-100"}>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+
+          <% Video.download_completed?(video) -> %>
+            <div class={"absolute -mr-4 -mt-4 right-0 top-0 z-30 p-2 rounded-full bg-opacity-80 bg-blue-500 text-blue-100"}>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+
+          <% true -> %>
+            <span></span>
         <% end %>
         <img {[src: thumbnail_url(video)]} width="512" class="shadow-md rounded-lg" />
         <div class={"#{video_overlay_class(video)} absolute inset-0 z-10 p-4 rounded-md group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition"}>
@@ -43,25 +59,28 @@
               <% %Download{progress: %{} = progress} = download -> %>
                 <div class="rounded-md text-gray-50 focus:outline-none">
                   <div class="py-3 px-2 flex flex-col items-center justify-center space-y-4">
-                    <%= if Download.paused?(download) do %>
-                      <span class="text-base font-medium text-yellow-500">Download Paused</span>
-                    <% else %>
-                      <span class="text-base font-medium">Downloading <%= progress.filetype %>...</span>
-                    <% end %>
+                    <%= cond do %>
+                      <% Download.queued?(download) -> %>
+                        <span class="text-base font-medium text-gray-50">Download Queued</span>
+                      <% Download.paused?(download) -> %>
+                        <span class="text-base font-medium text-yellow-500">Download Paused</span>
+                      <% true -> %>
+                        <span class="text-base font-medium">Downloading <%= progress.filetype %>...</span>
+                      <% end %>
                     <div class="flex flex-col items-center justify-center">
                       <span class="text-3xl font-medium"><%= download.progress.progress %>% (<%= download.progress.eta %>)</span>
-                      <span class="text-base"><%= format_resolution(download.format) %> &middot; <%= format_filesize(download.format.size) %></span>
+                      <span class="text-base"><%= format_resolution(download.video_format) %> &middot; <%= format_filesize(download.video_format.size) %></span>
                     </div>
                     <div class="space-x-4">
-                    <%= if Download.paused?(download) do %>
-                      <button phx-throttle="1000" phx-click={JS.push("download:resume", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-blue-300 hover:border-blue-300">
-                        Resume
-                      </button>
-                    <% else %>
-                      <button phx-throttle="1000" phx-click={JS.push("download:pause", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-blue-300 hover:border-blue-300">
-                        Pause
-                      </button>
-                    <% end %>
+                      <%= if Download.paused?(download) do %>
+                        <button phx-throttle="1000" phx-click={JS.push("download:resume", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-blue-300 hover:border-blue-300">
+                          Resume
+                        </button>
+                      <% else %>
+                        <button phx-throttle="1000" phx-click={JS.push("download:pause", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-blue-300 hover:border-blue-300">
+                          Pause
+                        </button>
+                      <% end %>
                       <button phx-throttle="1000" phx-click={JS.push("download:cancel", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-red-500 hover:border-red-500">
                         Cancel
                       </button>
@@ -76,7 +95,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span class="text-3xl font-bold"><%= format_resolution(download.format) %></span>
+                      <span class="text-3xl font-bold"><%= format_resolution(download.video_format) %></span>
                     </button>
                     <button phx-throttle="1000" phx-click={JS.push("download:delete", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-red-500 hover:border-red-500">
                       Remove
@@ -91,13 +110,19 @@
                   </div>
                 </div>
 
-              <% %Download{} -> %>
+              <% %Download{queued?: true} -> %>
+                <div class="rounded-md text-gray-50 focus:outline-none">
+                  <div class="py-3 px-2 flex flex-col justify-center">
+                    <span class="text-3xl font-medium">Download Queued</span>
+                  </div>
+                </div>
+
+              <% %Download{queued?: false} -> %>
                 <div class="rounded-md text-gray-50 focus:outline-none">
                   <div class="py-3 px-2 flex flex-col justify-center">
                     <span class="text-3xl font-medium">Download Starting...</span>
                   </div>
                 </div>
-
 
               <% nil -> %>
                 <fieldset class="mt-2">

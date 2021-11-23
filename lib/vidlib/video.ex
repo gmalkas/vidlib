@@ -30,6 +30,11 @@ defmodule Vidlib.Video do
     !is_nil(video.download) && Download.paused?(video.download)
   end
 
+  def download_queued?(%__MODULE__{} = video) do
+    !is_nil(video.download) &&
+      (!Download.started?(video.download) || Download.queued?(video.download))
+  end
+
   def new(%Youtube.Video{} = video) do
     %__MODULE__{
       id: video.id,

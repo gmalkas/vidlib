@@ -1,1 +1,1 @@
-alias Vidlib.{Database, Feed, Feeder, Subscription, Video}
+alias Vidlib.{Database, Download, Downloader, Feed, Feeder, Settings, Subscription, Video}

@@ -6,18 +6,22 @@
  [x] Cancel download
  [x] Delete download
  [x] Auto-resume download after crash/reboot
- [ ] Parallel downloads with aggregate progress
+ [x] Parallel downloads with aggregate progress
  [ ] Download queue
  [x] Download pause/resume
- [ ] List/Grid view
  [ ] Filter to view only downloaded videos
- [ ] Infinite scrolling pagination
  [ ] In-browser player
- [ ] Open native player
+ [x] Open native player
  [ ] View channel
+ [ ] Open video in Youtube
+ [ ] Search videos by title, description or channel name
+ [ ] List/Grid view
+ [ ] Infinite scrolling pagination
+ [ ] Quick download video with Youtube link
 
 # Settings
- [ ] First launch setup experience
+ [ ] Step-by-step setup
+ [ ] Load subscriptions from Youtube account
  [ ] Path to downloaded files
  [ ] Path to youtube-dl
  [ ] Default output format

@@ -72,12 +72,13 @@ defmodule VidlibWeb.FeedLive do
       Task.start(fn ->
         case Player.play(video.download) do
           {:error, :not_found} ->
-            Database.put(Video.drop_download(video))
-            Database.save()
+            Logger.warn("Could not play #{video.title}: file missing at #{video.download.path}")
+            Download.Manager.delete(video.id)
 
             send(self(), :refresh_downloads)
 
           _ ->
+            Logger.info("Playing #{video.title} at #{video.download.path}...")
             :ok
         end
       end)
@@ -134,18 +135,16 @@ defmodule VidlibWeb.FeedLive do
     download =
       Download.new(
         id: video.id,
-        format: video_format,
-        audio_format_id: audio_format.id,
-        video_format_id: video_format.id,
-        created_at: DateTime.utc_now(),
-        path:
-          Path.join([
-            downloads_path(),
-            video.title <> "-" <> video.id <> "." <> video_format.extension
-          ])
+        video_format: video_format,
+        audio_format: audio_format,
+        created_at: DateTime.utc_now()
       )
 
-    {:ok, _} = Download.Manager.start(Video.with_download(video, download))
+    video = Video.with_download(video, download)
+
+    Database.put(video)
+
+    :ok = Download.Manager.start(video)
 
     {:noreply, socket}
   end
@@ -186,9 +185,35 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
+  def format_aggregate_download_progress(downloads) do
+    {downloaded, total} =
+      downloads
+      |> Enum.map(fn {_, _, download} -> download end)
+      |> Enum.filter(&Download.in_progress?/1)
+      |> Enum.map(fn download ->
+        video_size = download.video_format.size
+        audio_size = download.audio_format.size
+        total_size = video_size + audio_size
+
+        case download.progress do
+          nil ->
+            {0, total_size}
+
+          %{filetype: :video} = progress ->
+            {progress.progress / 100 * video_size, total_size}
+
+          %{filetype: :audio} = progress ->
+            {progress.progress / 100 * audio_size + video_size, total_size}
+        end
+      end)
+      |> Enum.reduce({0, 0}, fn {x, y}, {accX, accY} -> {x + accX, y + accY} end)
+
+    round(downloaded / total * 100)
+  end
+
   def download_status_color(download) do
     cond do
-      Download.paused?(download) -> "bg-gray-500"
+      Download.paused?(download) || Download.queued?(download) -> "bg-gray-500"
       Download.failed?(download) -> "bg-red-500"
       true -> "bg-blue-500"
     end
@@ -202,7 +227,9 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def video_overlay_class(video) do
-    visible? = !is_nil(video.download) && Download.in_progress?(video.download)
+    visible? =
+      !is_nil(video.download) && Download.in_progress?(video.download) &&
+        !Download.queued?(video.download)
 
     if visible? do
       "opacity-100"
@@ -300,9 +327,5 @@ defmodule VidlibWeb.FeedLive do
 
   defp interesting_resolution?({_, height}) do
     height >= 480
-  end
-
-  defp downloads_path do
-    "/tmp"
   end
 end
