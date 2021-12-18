@@ -10,7 +10,12 @@ defmodule Vidlib.MixProject do
       compilers: [:gettext] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      releases: [
+        vidlib: [
+          include_erts: false
+        ]
+      ]
     ]
   end
 
