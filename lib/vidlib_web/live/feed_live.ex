@@ -25,16 +25,19 @@ defmodule VidlibWeb.FeedLive do
   def mount(params, _, socket) do
     :ok = Event.Dispatcher.subscribe(self())
 
+    filters = %{}
     page_number = Map.get(params, "page", "1") |> String.to_integer()
-    page = load_video_page(page_number)
+    page = load_video_page(page_number, filters)
 
     downloads = load_ongoing_downloads()
     refreshed_at = Feeder.last_refreshed_at()
 
     {:ok,
      assign(socket,
+       filters: filters,
        page: page,
        page_number: page_number,
+       feeds: Database.all(Feed),
        downloads: downloads,
        refreshed_at: refreshed_at,
        refreshing_feed: nil
@@ -42,11 +45,13 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def handle_params(params, _, socket) do
+    filters = Map.get(params, "filters", %{})
     page_number = Map.get(params, "page", "1") |> String.to_integer()
-    page = load_video_page(page_number)
+    page = load_video_page(page_number, filters)
 
     {:noreply,
      assign(socket,
+       filters: filters,
        page: page,
        page_number: page_number
      )}
@@ -150,13 +155,13 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def handle_info({:feed_refreshed, index, count}, socket) do
-    page = load_video_page(socket.assigns.page_number)
+    page = load_video_page(socket.assigns.page_number, socket.assigns.filters)
 
     {:noreply, assign(socket, page: page, refreshing_feed: {index, count})}
   end
 
   def handle_info(:refresh_downloads, socket) do
-    page = load_video_page(socket.assigns.page_number)
+    page = load_video_page(socket.assigns.page_number, socket.assigns.filters)
     downloads = load_ongoing_downloads()
 
     {:noreply, assign(socket, downloads: downloads, page: page)}
@@ -169,13 +174,13 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def handle_info({:video, :new, _}, socket) do
-    page = load_video_page(socket.assigns.page_number)
+    page = load_video_page(socket.assigns.page_number, socket.assigns.filters)
 
     {:noreply, assign(socket, page: page)}
   end
 
   def handle_info({:download, _, _}, socket) do
-    page = load_video_page(socket.assigns.page_number)
+    page = load_video_page(socket.assigns.page_number, socket.assigns.filters)
     downloads = load_ongoing_downloads()
 
     {:noreply, assign(socket, downloads: downloads, page: page)}
@@ -209,6 +214,12 @@ defmodule VidlibWeb.FeedLive do
       |> Enum.reduce({0, 0}, fn {x, y}, {accX, accY} -> {x + accX, y + accY} end)
 
     round(downloaded / total * 100)
+  end
+
+  def format_filter_label({"channel-id", channel_id}, assigns) do
+    feed = Enum.find(assigns.feeds, & &1.id == channel_id)
+
+    "Channel: " <> feed.name
   end
 
   def download_status_color(download) do
@@ -314,9 +325,10 @@ defmodule VidlibWeb.FeedLive do
   def refresh_button_class(nil), do: "refresh-button"
   def refresh_button_class({_, _}), do: "refresh-button refreshing"
 
-  defp load_video_page(page_number) do
+  defp load_video_page(page_number, filters) do
     videos =
       Database.all(Video)
+      |> apply_filters(filters)
       |> Enum.map(&{Database.get(Feed, &1.feed_id), &1})
       |> Enum.sort_by(fn {_, video} -> video.published_at end, {:desc, DateTime})
 
@@ -333,5 +345,16 @@ defmodule VidlibWeb.FeedLive do
 
   defp interesting_resolution?({_, height}) do
     height >= 480
+  end
+
+  defp apply_filters(videos, filters) do
+    videos
+    |> Enum.filter(& match_filters?(&1, filters))
+  end
+
+  defp match_filters?(%Video{} = video, filters) do
+    Enum.all?(filters, fn
+      {"channel-id", channel_id} -> video.feed_id == channel_id
+    end)
   end
 end

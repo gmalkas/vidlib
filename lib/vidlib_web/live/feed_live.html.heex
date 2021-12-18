@@ -1,6 +1,22 @@
 <div class="flex items-center justify-between">
   <div class="flex items-center space-x-2">
     <span class="text-sm font-medium text-gray-900"><%= format_video_count(@page.size, @page.total_entry_count) %></span>
+    <%= if map_size(@filters) > 0 do %>
+      <span>&middot;</span>
+      <%= for {filter_key, _} = filter <- @filters do %>
+        <span class="inline-flex rounded-full items-center py-0.5 pl-2.5 pr-1 text-sm font-medium bg-indigo-100 text-indigo-700">
+          <%= format_filter_label(filter, assigns) %>
+          <%= live_patch to: Routes.feed_path(@socket, :index, page: @page_number, filters: Map.delete(@filters, filter_key)) do %>
+            <button type="button" class="flex-shrink-0 ml-0.5 h-4 w-4 rounded-full inline-flex items-center justify-center text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 focus:outline-none focus:bg-indigo-500 focus:text-white">
+              <span class="sr-only">Remove filter</span>
+              <svg class="h-2 w-2" stroke="currentColor" fill="none" viewBox="0 0 8 8">
+                <path stroke-linecap="round" stroke-width="1.5" d="M1 1l6 6m0-6L1 7" />
+              </svg>
+            </button>
+        <% end %>
+        </span>
+      <% end %>
+    <% end %>
     <%= if length(@downloads) > 0 do %>
       <span>&middot;</span>
       <span>
@@ -148,12 +164,14 @@
 
       <div>
         <div class="px-1 flex items-center justify-between space-x-4">
-          <span class="font-medium text-sm text-gray-900"><%= channel.name %></span>
+          <%= live_patch to: Routes.feed_path(@socket, :index, page: 1, filters: Map.put(@filters, "channel-id", channel.id)) do %>
+            <button class="font-medium text-sm text-gray-900 hover:text-indigo-600 hover:underline"><%= channel.name %></button>
+          <% end %>
           <span class="font-medium text-sm text-gray-900"><%= format_timestamp(video.published_at) %></span>
         </div>
 
         <div class="px-1 flex space-x-4">
-          <span class="text-base truncate flex-grow text-gray-700"><%= video.title %></span>
+          <span class="text-base truncate flex-grow text-gray-700" title={video.title}><%= video.title %></span>
           <span class="flex-shrink-0 font-medium text-sm text-gray-500"><%= format_duration(video.duration) %></span>
         </div>
       </div>
@@ -165,7 +183,7 @@
   <nav class="mt-6 border-t border-gray-200 px-4 flex items-center justify-between sm:px-0">
     <div class="-mt-px w-0 flex-1 flex">
       <%= if @page.number > 1 do %>
-        <%= live_patch to: Routes.feed_path(@socket, :index, page: @page.number - 1) do %>
+        <%= live_patch to: Routes.feed_path(@socket, :index, page: @page.number - 1, filters: @filters) do %>
           <span class="border-t-2 border-transparent pt-4 pr-1 inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
             <svg class="mr-3 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
@@ -186,7 +204,7 @@
       <%= if @page.count >= 10 do %>
         <%= if @page.number >= 6 do %>
           <%= for i <- 1..3 do %>
-            <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+            <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
               <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                 <%= i %>
               </span>
@@ -202,7 +220,7 @@
                 <%= i %>
               </span>
             <% else %>
-              <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+              <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
                 <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                   <%= i %>
                 </span>
@@ -217,7 +235,7 @@
                 <%= i %>
               </span>
             <% else %>
-              <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+              <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
                 <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                   <%= i %>
                 </span>
@@ -232,7 +250,7 @@
                 <%= i %>
               </span>
             <% else %>
-              <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+              <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
                 <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                   <%= i %>
                 </span>
@@ -244,7 +262,7 @@
             ...
           </span>
           <%= for i <- (@page.count - 2)..@page.count do %>
-            <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+            <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
               <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                 <%= i %>
               </span>
@@ -258,7 +276,7 @@
               <%= i %>
             </span>
           <% else %>
-            <%= live_patch to: Routes.feed_path(@socket, :index, page: i) do %>
+            <%= live_patch to: Routes.feed_path(@socket, :index, page: i, filters: @filters) do %>
               <span class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-t-2 pt-4 px-4 inline-flex items-center text-sm font-medium">
                 <%= i %>
               </span>
@@ -269,7 +287,7 @@
     </div>
     <div class="-mt-px w-0 flex-1 flex justify-end">
       <%= if @page.number < @page.count do %>
-        <%= live_patch to: Routes.feed_path(@socket, :index, page: @page.number + 1) do %>
+        <%= live_patch to: Routes.feed_path(@socket, :index, page: @page.number + 1, filters: @filters) do %>
           <span class="border-t-2 border-transparent pt-4 pl-1 inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
             Next
             <!-- Heroicon name: solid/arrow-narrow-right -->
