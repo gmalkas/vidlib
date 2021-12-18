@@ -122,7 +122,7 @@
                 <div class="rounded-md text-red-500 focus:outline-none">
                   <div class="py-3 px-2 flex flex-col justify-center">
                     <span class="text-3xl font-medium">Download Failed</span>
-                    <button phx-throttle="1000" phx-click={JS.push("download:delete", value: %{video_id: video.id})} class="cursor-pointer text-xl font-medium text-gray-50 hover:text-blue-300">Retry</button>
+                    <button phx-throttle="1000" phx-click={JS.push("download:retry", value: %{video_id: video.id})} class="px-3 py-2 rounded-md cursor-pointer text-sm leading-4 font-medium text-gray-50 border border-gray-200 hover:text-blue-500 hover:border-blue-500">Retry</button>
                   </div>
                 </div>
 
@@ -133,7 +133,7 @@
                   </div>
                 </div>
 
-              <% %Download{queued?: false} -> %>
+              <% %Download{} -> %>
                 <div class="rounded-md text-gray-50 focus:outline-none">
                   <div class="py-3 px-2 flex flex-col justify-center">
                     <span class="text-3xl font-medium">Download Starting...</span>

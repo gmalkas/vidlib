@@ -73,7 +73,8 @@ defmodule Vidlib.Download.Worker do
       fn
         {:ok, file_path} ->
           video = Database.get(Video, video_id)
-          download = Download.completed(video.download, file_path)
+          stats = File.stat!(file_path)
+          download = Download.completed(video.download, file_path, stats.size)
 
           Database.put(Video.with_download(video, download))
           Database.save()

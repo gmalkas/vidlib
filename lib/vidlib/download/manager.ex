@@ -45,6 +45,8 @@ defmodule Vidlib.Download.Manager do
       Event.Dispatcher.publish({:download, :cancelled, video_id})
     end
 
+    GenServer.call(__MODULE__, {:drop_from_queue, video_id})
+
     delete_download(video_id)
 
     :ok
@@ -161,7 +163,14 @@ defmodule Vidlib.Download.Manager do
 
   defp delete_download(video_id) do
     video = Database.get(Video, video_id)
+    delete_file(video.download.path)
     Database.put(Video.drop_download(video))
     Database.save()
+  end
+
+  defp delete_file(nil), do: :ok
+
+  defp delete_file(file_path) do
+    File.rm(file_path)
   end
 end

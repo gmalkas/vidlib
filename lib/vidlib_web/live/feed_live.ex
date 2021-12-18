@@ -3,6 +3,8 @@ defmodule VidlibWeb.FeedLive do
 
   require Logger
 
+  import VidlibWeb.View.Helpers
+
   alias Phoenix.LiveView.JS
 
   alias Vidlib.{
@@ -124,6 +126,14 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
+  def handle_event("download:retry", %{"video_id" => video_id}, socket) do
+    :ok = Download.Manager.resume(video_id)
+
+    send(self(), :refresh_downloads)
+
+    {:noreply, socket}
+  end
+
   def handle_event("video:download", video_details, socket) do
     %{"video_id" => video_id, "format_id" => format_id} = video_details
 
@@ -190,51 +200,10 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, socket}
   end
 
-  def format_aggregate_download_progress(downloads) do
-    {downloaded, total} =
-      downloads
-      |> Enum.map(fn {_, _, download} -> download end)
-      |> Enum.filter(&Download.in_progress?/1)
-      |> Enum.map(fn download ->
-        video_size = download.video_format.size
-        audio_size = download.audio_format.size
-        total_size = video_size + audio_size
-
-        case download.progress do
-          nil ->
-            {0, total_size}
-
-          %{filetype: :video} = progress ->
-            {progress.progress / 100 * video_size, total_size}
-
-          %{filetype: :audio} = progress ->
-            {progress.progress / 100 * audio_size + video_size, total_size}
-        end
-      end)
-      |> Enum.reduce({0, 0}, fn {x, y}, {accX, accY} -> {x + accX, y + accY} end)
-
-    round(downloaded / total * 100)
-  end
-
   def format_filter_label({"channel-id", channel_id}, assigns) do
-    feed = Enum.find(assigns.feeds, & &1.id == channel_id)
+    feed = Enum.find(assigns.feeds, &(&1.id == channel_id))
 
     "Channel: " <> feed.name
-  end
-
-  def download_status_color(download) do
-    cond do
-      Download.paused?(download) || Download.queued?(download) -> "bg-gray-500"
-      Download.failed?(download) -> "bg-red-500"
-      true -> "bg-blue-500"
-    end
-  end
-
-  def download_progress(download) do
-    cond do
-      Download.has_progress?(download) -> download.progress.progress
-      true -> 0
-    end
   end
 
   def video_overlay_class(video) do
@@ -264,37 +233,6 @@ defmodule VidlibWeb.FeedLive do
 
   def format_refresh_progress(nil), do: ""
   def format_refresh_progress({index, count}), do: "#{index} / #{count}"
-
-  def format_timestamp(timestamp) do
-    Timex.format!(timestamp, "{WDshort}, {Mshort} {D}")
-  end
-
-  def format_duration(duration_seconds) do
-    hours = div(duration_seconds, 3600)
-    minutes = div(rem(duration_seconds, 3600), 60)
-    seconds = rem(duration_seconds, 60)
-
-    if hours > 0 do
-      [hours, minutes, seconds]
-      |> Enum.map(&to_string/1)
-      |> Enum.map(& String.pad_leading(&1, 2, "0"))
-      |> Enum.join(":")
-    else
-      [minutes, seconds]
-      |> Enum.map(&to_string/1)
-      |> Enum.map(& String.pad_leading(&1, 2, "0"))
-      |> Enum.join(":")
-    end
-  end
-
-  def format_filesize(nil), do: nil
-  def format_filesize(size), do: Size.humanize!(size)
-
-  def format_resolution(format) do
-    case format.resolution do
-      {_width, height} -> "#{height}p"
-    end
-  end
 
   def format_refreshed_at(nil), do: "Click to refresh"
 
@@ -349,7 +287,7 @@ defmodule VidlibWeb.FeedLive do
 
   defp apply_filters(videos, filters) do
     videos
-    |> Enum.filter(& match_filters?(&1, filters))
+    |> Enum.filter(&match_filters?(&1, filters))
   end
 
   defp match_filters?(%Video{} = video, filters) do

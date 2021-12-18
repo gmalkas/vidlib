@@ -37,7 +37,7 @@ defmodule Vidlib.Downloader do
   def thumbnail_as_data_url(%Youtube.Video{} = video) do
     thumbnail =
       (video.thumbnails || [])
-      |> Enum.filter(&!is_nil(&1.width))
+      |> Enum.filter(&(!is_nil(&1.width)))
       |> Enum.max_by(& &1.preference, &>=/2, fn -> video.thumbnail end)
 
     if !is_nil(thumbnail) do
@@ -79,9 +79,9 @@ defmodule Vidlib.Downloader do
         end
 
       {^port, {:data, "[download]" <> _ = data}} ->
-        if String.contains?(data, "has already been downloaded") && !Regex.match?(~r/\.f\d+\./, data) do
-          [_, file_path] =
-            Regex.run(~r/^\[download\] (.*) has already been downloaded$/, data)
+        if String.contains?(data, "has already been downloaded") &&
+             !Regex.match?(~r/\.f\d+\./, data) do
+          [_, file_path] = Regex.run(~r/^\[download\] (.*) has already been downloaded$/, data)
 
           callback.({:ok, file_path})
 

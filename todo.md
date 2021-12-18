@@ -7,12 +7,11 @@
  [x] Delete download
  [x] Auto-resume download after crash/reboot
  [x] Parallel downloads with aggregate progress
- [ ] Download queue
+ [x] Download queue
  [x] Download pause/resume
- [ ] Filter to view only downloaded videos
- [ ] In-browser player
+ [ ] HTML5 player
  [x] Open native player
- [ ] View channel
+ [x] View channel videos
  [ ] Open video in Youtube
  [ ] Search videos by title, description or channel name
  [ ] List/Grid view
@@ -29,11 +28,18 @@
  [ ] Audio quality
  [ ] Max. # of parallel downloads
  [ ] Path to native player
- [ ] In-browser vs native player
+ [ ] HTML5 vs native player
 
 # Subscriptions
+ [ ] Add/Remove subscriptions
  [ ] Toggle auto-download
  [ ] Default resolution
 
+# Playlists
+
+ [ ] Manage playlists
+
 # Misc
  [ ] Packaged single-binary release for Linux with bakeware
+ [ ] Detect new releases from Github and download/install on click
+ [ ] User profiles

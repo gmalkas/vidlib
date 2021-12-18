@@ -1,0 +1,194 @@
+<div class="space-y-6">
+  <div>
+    <h2 class="text-gray-500 text-sm font-medium uppercase tracking-wide">
+      In Progress
+      <%= if length(@downloads_by_status[:in_progress]) > 0 do %>
+        (<%= format_aggregate_download_progress(@downloads_by_status[:in_progress]) %>%)
+      <% end %>
+    </h2>
+
+    <%= if length(@downloads_by_status[:in_progress]) > 0 do %>
+      <ul class="mt-4 list-none space-y-8">
+        <%= for {feed, video, download} <- @downloads_by_status[:in_progress] do %>
+          <div class="flex space-x-4">
+            <div class="relative">
+              <%= if Video.download_started?(video) && !Video.download_completed?(video) do %>
+                <VidlibWeb.FeedLive.ProgressBarComponent.render color={download_status_color(video.download)} progress={download_progress(video.download)} />
+              <% end %>
+              <img {[src: video.thumbnail]} width="256" class="shadow-md rounded-lg" />
+            </div>
+            <div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= feed.name %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_timestamp(video.published_at) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_duration(video.duration) %></span>
+              </div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= format_resolution(download.video_format) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_filesize(download) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= download_progress(download) %>%</span>
+              </div>
+
+              <div class="px-1 flex space-x-4">
+                <span class="text-base truncate flex-grow text-gray-700"><%= video.title %></span>
+              </div>
+              <div class="px-1 mt-2 space-x-2">
+                <button phx-throttle="1000" phx-click={JS.push("pause", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Pause
+                </button>
+                <button phx-throttle="1000" phx-click={JS.push("cancel", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-gray-900 text-sm">There are no active downloads.</p>
+    <% end %>
+  </div>
+
+  <div>
+    <h2 class="text-gray-500 text-sm font-medium uppercase tracking-wide">Queued</h2>
+
+    <%= if length(@downloads_by_status[:queued]) > 0 do %>
+      <ul class="mt-4 list-none space-y-8">
+        <%= for {feed, video, download} <- @downloads_by_status[:queued] do %>
+          <div class="flex space-x-4">
+            <img {[src: video.thumbnail]} width="256" class="shadow-md rounded-lg" />
+            <div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= feed.name %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-900"><%= format_timestamp(video.published_at) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_duration(video.duration) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_filesize(download) %></span>
+              </div>
+
+              <div class="px-1 flex space-x-4">
+                <span class="text-base truncate flex-grow text-gray-700"><%= video.title %></span>
+              </div>
+              <div class="px-1 mt-2">
+                <button phx-throttle="1000" phx-click={JS.push("cancel", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-gray-900 text-sm">There are no queued downloads.</p>
+    <% end %>
+  </div>
+
+  <div>
+    <h2 class="text-gray-500 text-sm font-medium uppercase tracking-wide">Paused</h2>
+
+    <%= if length(@downloads_by_status[:paused]) > 0 do %>
+      <ul class="mt-4 list-none space-y-8">
+        <%= for {feed, video, download} <- @downloads_by_status[:paused] do %>
+          <div class="flex space-x-4">
+            <div class="relative">
+              <%= if Video.download_started?(video) && !Video.download_completed?(video) do %>
+                <VidlibWeb.FeedLive.ProgressBarComponent.render color={download_status_color(video.download)} progress={download_progress(video.download)} />
+              <% end %>
+              <img {[src: video.thumbnail]} width="256" class="shadow-md rounded-lg" />
+            </div>
+            <div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= feed.name %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-900"><%= format_timestamp(video.published_at) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_duration(video.duration) %></span>
+                <span class="font-medium text-sm text-gray-500"><%= download.progress.progress %>%</span>
+              </div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= format_resolution(download.video_format) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_filesize(download) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= download_progress(download) %>%</span>
+              </div>
+
+              <div class="px-1 flex space-x-4">
+                <span class="text-base truncate flex-grow text-gray-700"><%= video.title %></span>
+              </div>
+              <div class="px-1 mt-2 space-x-2">
+                <button phx-throttle="1000" phx-click={JS.push("resume", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Resume
+                </button>
+                <button phx-throttle="1000" phx-click={JS.push("cancel", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-gray-900 text-sm">There are no paused downloads.</p>
+    <% end %>
+  </div>
+
+  <div>
+    <h2 class="text-gray-500 text-sm font-medium uppercase tracking-wide">Completed</h2>
+
+    <%= if length(@downloads_by_status[:completed]) > 0 do %>
+      <ul class="mt-4 list-none space-y-8">
+        <%= for {feed, video, download} <- @downloads_by_status[:completed] do %>
+          <div class="flex space-x-4">
+            <div class="group relative w-64">
+              <img {[src: video.thumbnail]} width="256" class="shadow-md rounded-lg" />
+              <div class="absolute inset-0 z-10 p-4 rounded-md hidden group-hover:opacity-100 bg-opacity-80 bg-gray-900 group-hover:block transition">
+                <div class="h-full flex items-center justify-center">
+                  <div class="py-3 px-2 h-full flex flex-col items-center justify-around">
+                    <button phx-throttle="1000" phx-click={JS.push("video:play", value: %{video_id: video.id})} class="inline-flex px-3 py-2 items-center text-gray-50 rounded-md hover:text-blue-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= feed.name %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_timestamp(video.published_at) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_duration(video.duration) %></span>
+              </div>
+              <div class="px-1 flex items-center space-x-2">
+                <span class="font-medium text-sm text-gray-900"><%= format_resolution(download.video_format) %></span>
+                <span>&middot;</span>
+                <span class="font-medium text-sm text-gray-500"><%= format_filesize(download) %></span>
+              </div>
+
+              <div class="px-1 flex space-x-4">
+                <span class="text-base truncate flex-grow text-gray-700"><%= video.title %></span>
+              </div>
+              <div class="px-1 mt-2">
+                <button phx-throttle="1000" phx-click={JS.push("delete", value: %{video_id: video.id})} class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-gray-900 text-sm">There are no completed downloads.</p>
+    <% end %>
+  </div>
+</div>

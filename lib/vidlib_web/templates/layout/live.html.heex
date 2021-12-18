@@ -22,6 +22,18 @@
               </div>
             <% end %>
 
+            <%= live_redirect to: Routes.downloads_path(@socket, :index) do %>
+              <div class={nav_tab_class(@socket, VidlibWeb.DownloadsLive)}>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Downloads</span>
+                <%= if download_count() > 0 do %>
+                  <span class="bg-indigo-100 text-indigo-600 hidden ml-3 py-0.5 px-2.5 rounded-full text-xs font-medium md:inline-block"><%= download_count() %></span>
+                <% end %>
+              </div>
+            <% end %>
+
             <%= live_redirect to: Routes.subscriptions_path(@socket, :index) do %>
               <div class={nav_tab_class(@socket, VidlibWeb.SubscriptionsLive)}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

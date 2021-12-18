@@ -20,6 +20,7 @@ defmodule VidlibWeb.Router do
     pipe_through :browser
 
     live "/", FeedLive, :index
+    live "/downloads", DownloadsLive, :index
     live "/subscriptions", SubscriptionsLive, :index
     live "/settings", SettingsLive, :index
   end

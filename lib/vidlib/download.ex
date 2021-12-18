@@ -2,6 +2,7 @@ defmodule Vidlib.Download do
   defstruct [
     :id,
     :path,
+    :size,
     :audio_format,
     :video_format,
     :paused?,
@@ -48,27 +49,42 @@ defmodule Vidlib.Download do
       | started_at: download.started_at || DateTime.utc_now(),
         updated_at: DateTime.utc_now(),
         queued?: false,
-        paused?: false
+        paused?: false,
+        failed_at: nil
     }
   end
 
   def paused(%__MODULE__{} = download) do
-    %__MODULE__{download | paused?: true, queued?: false, updated_at: DateTime.utc_now()}
+    %__MODULE__{
+      download
+      | paused?: true,
+        queued?: false,
+        failed_at: nil,
+        updated_at: DateTime.utc_now()
+    }
   end
 
   def queued(%__MODULE__{} = download) do
-    %__MODULE__{download | queued?: true, paused?: false, updated_at: DateTime.utc_now()}
+    %__MODULE__{
+      download
+      | queued?: true,
+        paused?: false,
+        failed_at: nil,
+        updated_at: DateTime.utc_now()
+    }
   end
 
-  def completed(%__MODULE__{} = download, file_path) do
+  def completed(%__MODULE__{} = download, file_path, file_size) do
     %__MODULE__{
       download
       | completed_at: DateTime.utc_now(),
         updated_at: DateTime.utc_now(),
+        failed_at: nil,
         progress: nil,
         queued?: false,
         paused?: false,
-        path: file_path
+        path: file_path,
+        size: file_size
     }
   end
 
@@ -84,6 +100,13 @@ defmodule Vidlib.Download do
   end
 
   def with_progress(%__MODULE__{} = download, progress) do
-    %__MODULE__{download | progress: progress, updated_at: DateTime.utc_now()}
+    %__MODULE__{
+      download
+      | progress: progress,
+        updated_at: DateTime.utc_now(),
+        failed_at: nil,
+        queued?: false,
+        paused?: false
+    }
   end
 end

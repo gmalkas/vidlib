@@ -1,1 +1,7 @@
-
+<ul class="space-y-4">
+  <%= for {_subscription, feed, videos} <- @subscriptions do %>
+    <li>
+      <%= feed.name %> (<%= length(videos) %> videos)
+    </li>
+  <% end %>
+</ul>
