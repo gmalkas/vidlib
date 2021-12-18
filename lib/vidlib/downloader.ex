@@ -1,7 +1,9 @@
 defmodule Vidlib.Downloader do
   require Logger
 
-  alias Vidlib.Video
+  alias Vidlib.{Settings, Video}
+
+  @bin_name "yt-dlp"
 
   def download(
         file_output_template,
@@ -77,9 +79,9 @@ defmodule Vidlib.Downloader do
         end
 
       {^port, {:data, "[download]" <> _ = data}} ->
-        if String.contains?(data, "has already been downloaded and merged") do
+        if String.contains?(data, "has already been downloaded") && !Regex.match?(~r/\.f\d+\./, data) do
           [_, file_path] =
-            Regex.run(~r/^\[download\] (.*) has already been downloaded and merged$/, data)
+            Regex.run(~r/^\[download\] (.*) has already been downloaded$/, data)
 
           callback.({:ok, file_path})
 
@@ -107,7 +109,7 @@ defmodule Vidlib.Downloader do
           )
         end
 
-      {^port, {:data, "Merging formats into" <> _ = data}} ->
+      {^port, {:data, "[Merger] Merging formats into" <> _ = data}} ->
         [_, file_path] = Regex.run(~r/"(.*)"/, data)
         callback.({:ok, file_path})
 
@@ -144,7 +146,7 @@ defmodule Vidlib.Downloader do
   end
 
   defp bin_path do
-    "/tmp/youtube-dl"
+    Settings.ytdlp_path() || System.find_executable(@bin_name)
   end
 
   defp parse_metadata(metadata) do
