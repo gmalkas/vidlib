@@ -138,7 +138,7 @@ defmodule Vidlib.Database do
 
   defp file_path() do
     Path.join(
-      Application.get_env(:vidlib, :cache_path, "/tmp"),
+      Application.get_env(:vidlib, :database)[:path],
       "vidlib.ets"
     )
   end
