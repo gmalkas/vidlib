@@ -33,7 +33,10 @@ defmodule Vidlib.Downloader do
   end
 
   def thumbnail_as_data_url(%Youtube.Video{} = video) do
-    thumbnail = Enum.find(video.thumbnails || [], &(&1.width > 500)) || video.thumbnail
+    thumbnail =
+      (video.thumbnails || [])
+      |> Enum.filter(&!is_nil(&1.width))
+      |> Enum.max_by(& &1.preference, &>=/2, fn -> video.thumbnail end)
 
     if !is_nil(thumbnail) do
       Finch.build(:get, thumbnail[:url])
@@ -169,6 +172,7 @@ defmodule Vidlib.Downloader do
   defp parse_thumbnail(thumbnail) do
     %{
       url: thumbnail["url"],
+      preference: thumbnail["preference"],
       width: thumbnail["width"],
       height: thumbnail["height"]
     }
