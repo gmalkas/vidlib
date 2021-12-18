@@ -11,7 +11,7 @@ defmodule Vidlib.Download do
     :started_at,
     :completed_at,
     :failed_at,
-    :last_progress_at
+    :updated_at
   ]
 
   def in_progress?(%__MODULE__{progress: nil} = download) do
@@ -46,23 +46,25 @@ defmodule Vidlib.Download do
     %__MODULE__{
       download
       | started_at: download.started_at || DateTime.utc_now(),
+        updated_at: DateTime.utc_now(),
         queued?: false,
         paused?: false
     }
   end
 
   def paused(%__MODULE__{} = download) do
-    %__MODULE__{download | paused?: true, queued?: false}
+    %__MODULE__{download | paused?: true, queued?: false, updated_at: DateTime.utc_now()}
   end
 
   def queued(%__MODULE__{} = download) do
-    %__MODULE__{download | queued?: true, paused?: false}
+    %__MODULE__{download | queued?: true, paused?: false, updated_at: DateTime.utc_now()}
   end
 
   def completed(%__MODULE__{} = download, file_path) do
     %__MODULE__{
       download
       | completed_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now(),
         progress: nil,
         queued?: false,
         paused?: false,
@@ -74,6 +76,7 @@ defmodule Vidlib.Download do
     %__MODULE__{
       download
       | failed_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now(),
         progress: nil,
         queued?: false,
         paused?: false
@@ -81,6 +84,6 @@ defmodule Vidlib.Download do
   end
 
   def with_progress(%__MODULE__{} = download, progress) do
-    %__MODULE__{download | progress: progress, last_progress_at: DateTime.utc_now()}
+    %__MODULE__{download | progress: progress, updated_at: DateTime.utc_now()}
   end
 end
