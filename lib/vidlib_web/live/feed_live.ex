@@ -264,9 +264,15 @@ defmodule VidlibWeb.FeedLive do
     seconds = rem(duration_seconds, 60)
 
     if hours > 0 do
-      [hours, minutes, seconds] |> Enum.join(":")
+      [hours, minutes, seconds]
+      |> Enum.map(&to_string/1)
+      |> Enum.map(& String.pad_leading(&1, 2, "0"))
+      |> Enum.join(":")
     else
-      [minutes, seconds] |> Enum.join(":")
+      [minutes, seconds]
+      |> Enum.map(&to_string/1)
+      |> Enum.map(& String.pad_leading(&1, 2, "0"))
+      |> Enum.join(":")
     end
   end
 
