@@ -39,22 +39,22 @@ defmodule Vidlib.Downloader do
     thumbnail =
       (video.thumbnails || [])
       |> Enum.filter(&(!is_nil(&1.width)))
-      |> Enum.max_by(& &1.preference, &>=/2, fn -> video.thumbnail end)
+      |> Enum.max_by(& &1.width, fn -> video.thumbnail end)
 
     if !is_nil(thumbnail) do
-      Finch.build(:get, thumbnail[:url])
-      |> Finch.request(Crawler, timeout: 15_000)
-      |> case do
+      resolution = {thumbnail[:width], thumbnail[:height]}
+
+      case HTTP.get(thumbnail[:url]) do
         {:ok, %Finch.Response{status: 200} = response} ->
           mime_type = Map.fetch!(Map.new(response.headers), "content-type")
 
-          to_data_url(mime_type, response.body)
+          {resolution, to_data_url(mime_type, response.body)}
 
         _ ->
-          ""
+          {resolution, nil}
       end
     else
-      ""
+      {nil, nil}
     end
   end
 
