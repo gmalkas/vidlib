@@ -1,12 +1,15 @@
 defmodule Vidlib.Video do
   alias Vidlib.Download
 
+  @minimum_thumbnail_width_px 512
+
   defstruct [
     :id,
     :feed_id,
     :title,
     :download,
     :thumbnail,
+    :thumbnail_resolution,
     :youtube_video,
     :published_at,
     :link,
@@ -35,6 +38,10 @@ defmodule Vidlib.Video do
       (!Download.started?(video.download) || Download.queued?(video.download))
   end
 
+  def missing_thumbnail?(%__MODULE__{thumbnail: thumbnail}) do
+    is_nil(thumbnail)
+  end
+
   def new(%Youtube.Video{} = video) do
     %__MODULE__{
       id: video.id,
@@ -48,15 +55,21 @@ defmodule Vidlib.Video do
     }
   end
 
+  def poor_quality_thumbnail?(%__MODULE__{} = video) do
+    is_nil(video.thumbnail_resolution) || low_thumbnail_resolution?(video.thumbnail_resolution)
+  end
+
   def with_download(%__MODULE__{} = video, %Download{} = download) do
     %__MODULE__{video | download: download}
   end
 
-  def with_thumbnail(%__MODULE__{} = video, thumbnail_data_url) do
-    %__MODULE__{video | thumbnail: thumbnail_data_url}
+  def with_thumbnail(%__MODULE__{} = video, {resolution, thumbnail_data_url}) do
+    %__MODULE__{video | thumbnail: thumbnail_data_url, thumbnail_resolution: resolution}
   end
 
   def drop_download(%__MODULE__{} = video) do
     %__MODULE__{video | download: nil}
   end
+
+  defp low_thumbnail_resolution?({width, _height}), do: width < @minimum_thumbnail_width_px
 end
