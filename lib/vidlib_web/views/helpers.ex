@@ -12,7 +12,13 @@ defmodule VidlibWeb.View.Helpers do
   def download_progress(download) do
     video_size = download.video_format.size
     audio_size = download.audio_format.size
-    total_size = video_size + audio_size
+
+    total_size =
+      if !is_nil(video_size) && !is_nil(audio_size) do
+        video_size + audio_size
+      else
+        video_size || audio_size || 1
+      end
 
     case download.progress do
       nil ->
@@ -34,7 +40,13 @@ defmodule VidlibWeb.View.Helpers do
       |> Enum.map(fn download ->
         video_size = download.video_format.size
         audio_size = download.audio_format.size
-        total_size = video_size + audio_size
+
+        total_size =
+          if !is_nil(video_size) && !is_nil(audio_size) do
+            video_size + audio_size
+          else
+            video_size || audio_size || 1
+          end
 
         case download.progress do
           nil ->
@@ -73,6 +85,8 @@ defmodule VidlibWeb.View.Helpers do
       |> Enum.join(":")
     end
   end
+
+  def format_filesize(nil), do: ""
 
   def format_filesize(%Download{size: nil} = download) do
     size = download.video_format.size + download.audio_format.size
