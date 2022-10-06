@@ -14,6 +14,7 @@ defmodule Vidlib.Downloader do
       ) do
     args = [
       "--newline",
+      "--force-ipv4",
       "-f",
       "#{video_format_id}+#{audio_format_id}",
       "-o",
