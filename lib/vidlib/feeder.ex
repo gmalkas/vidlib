@@ -3,10 +3,17 @@ defmodule Vidlib.Feeder do
 
   alias Vidlib.{Database, Downloader, Event, Feed, Subscription, Video}
 
-  def load(feed_url) do
-    {:ok, %Finch.Response{body: body}} =
-      Finch.build(:get, feed_url)
-      |> Finch.request(Crawler, timeout: 15_000)
+  @feed_url_prefix "https://www.youtube.com/feeds/videos.xml?channel_id="
+
+  def load(feed_url_or_id) do
+    feed_url =
+      if String.starts_with?(feed_url_or_id, "http") do
+        feed_url_or_id
+      else
+        @feed_url_prefix <> feed_url_or_id
+      end
+
+    {:ok, %Finch.Response{status: 200, body: body}} = fetch_feed(feed_url)
 
     [feed] = Quinn.parse(body)
     channel = Youtube.Channel.from_atom(feed)
@@ -81,7 +88,7 @@ defmodule Vidlib.Feeder do
     Database.save()
   end
 
-  def last_refreshed_at do
-    Database.get(:feed_refreshed_at)
-  end
+  def last_refreshed_at, do: Database.get(:feed_refreshed_at)
+
+  defp fetch_feed(feed_url), do: HTTP.get(feed_url)
 end

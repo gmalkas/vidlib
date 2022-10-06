@@ -64,6 +64,7 @@ defmodule VidlibWeb.FeedLive do
 
     Task.start(fn ->
       Feeder.refresh(fn
+        {:error, _} -> send(myself, :feed_refreshed_failed)
         {%Feed{}, index, count} -> send(myself, {:feed_refreshed, index, count})
         :done -> send(myself, :feed_refreshed)
       end)
@@ -183,6 +184,10 @@ defmodule VidlibWeb.FeedLive do
     {:noreply, assign(socket, refreshing_feed: nil, refreshed_at: refreshed_at)}
   end
 
+  def handle_info(:feed_refreshed_failed, socket) do
+    {:noreply, assign(socket, refreshing_feed: :failed)}
+  end
+
   def handle_info({:video, :new, _}, socket) do
     page = load_video_page(socket.assigns.page_number, socket.assigns.filters)
 
@@ -232,6 +237,7 @@ defmodule VidlibWeb.FeedLive do
   end
 
   def format_refresh_progress(nil), do: ""
+  def format_refresh_progress(:failed), do: "Failed to refresh feed: Connection Error"
   def format_refresh_progress({index, count}), do: "#{index} / #{count}"
 
   def format_refreshed_at(nil), do: "Click to refresh"
@@ -256,11 +262,16 @@ defmodule VidlibWeb.FeedLive do
     |> Enum.sort_by(& &1.resolution)
   end
 
+  def has_thumbnail?(video) do
+    !is_nil(video.thumbnail)
+  end
+
   def thumbnail_url(video) do
     video.thumbnail
   end
 
   def refresh_button_class(nil), do: "refresh-button"
+  def refresh_button_class(:failed), do: "refresh-button"
   def refresh_button_class({_, _}), do: "refresh-button refreshing"
 
   defp load_video_page(page_number, filters) do
