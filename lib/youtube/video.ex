@@ -22,8 +22,14 @@ defmodule Youtube.Video do
     [published_at_raw] = entry[:value] |> Enum.find(&(&1[:name] == :published)) |> Map.get(:value)
     media_group = entry[:value] |> Enum.find(&(&1[:name] == :"media:group"))
 
-    [description] =
-      media_group[:value] |> Enum.find(&(&1[:name] == :"media:description")) |> Map.get(:value)
+    description =
+      media_group[:value]
+      |> Enum.find(&(&1[:name] == :"media:description"))
+      |> Map.get(:value)
+      |> case do
+        [description] -> description
+        [] -> ""
+      end
 
     thumbnail =
       media_group[:value] |> Enum.find(&(&1[:name] == :"media:thumbnail")) |> Map.get(:attr)
