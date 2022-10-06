@@ -133,7 +133,12 @@ defmodule Vidlib.Database do
   defp put_in_cache(tid, key, value), do: :ets.insert(tid, {key, value})
 
   defp store_cache_file(tid) do
-    :ets.tab2file(tid, String.to_charlist(file_path()), sync: true)
+    destination_file_path = file_path()
+    {:ok, temporary_file_path} = Briefly.create()
+
+    :ets.tab2file(tid, String.to_charlist(temporary_file_path), sync: true)
+
+    :ok = File.rename(temporary_file_path, destination_file_path)
   end
 
   defp file_path() do
