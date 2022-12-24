@@ -13,12 +13,12 @@ defmodule Vidlib.Feeder do
         @feed_url_prefix <> feed_url_or_id
       end
 
-    {:ok, %Finch.Response{status: 200, body: body}} = fetch_feed(feed_url)
+    with {:ok, %Finch.Response{status: 200, body: body}} <- fetch_feed(feed_url) do
+      [feed] = Quinn.parse(body)
+      channel = Youtube.Channel.from_atom(feed)
 
-    [feed] = Quinn.parse(body)
-    channel = Youtube.Channel.from_atom(feed)
-
-    Feed.new(channel)
+      {:ok, Feed.new(channel)}
+    end
   end
 
   def refresh(callback \\ fn _ -> :ok end) do
@@ -33,18 +33,19 @@ defmodule Vidlib.Feeder do
     subscriptions
     |> Enum.with_index(1)
     |> Enum.each(fn {subscription, index} ->
-      feed = load(subscription.feed_url)
+      {:ok, feed} = load(subscription.feed_url)
 
-      new_videos =
+      {new_videos, existing_video_ids} =
         case Database.get(feed) do
           %Feed{} = cached_feed ->
-            Enum.reject(feed.videos, &MapSet.member?(cached_feed.video_ids, &1.id))
+            {
+              Enum.reject(feed.videos, &MapSet.member?(cached_feed.video_ids, &1.id)),
+              cached_feed.video_ids
+            }
 
           _ ->
-            feed.videos
+            {feed.videos, MapSet.new([])}
         end
-
-      Database.put(Feed.without_videos(feed))
 
       new_videos_count = length(new_videos)
 
@@ -70,6 +71,7 @@ defmodule Vidlib.Feeder do
       updated_feed =
         feed
         |> Feed.without_videos()
+        |> Feed.put_video_ids(existing_video_ids)
         |> Feed.refreshed()
 
       Database.put(updated_feed)
@@ -77,9 +79,9 @@ defmodule Vidlib.Feeder do
 
       Event.Dispatcher.publish({:feed, :refreshed, updated_feed.id})
 
-      callback.({feed, index, subscription_count})
+      callback.({updated_feed, index, subscription_count})
 
-      Logger.info("#{feed.name}: Loaded #{length(new_videos)} new videos")
+      Logger.info("#{updated_feed.name}: Loaded #{length(new_videos)} new videos")
     end)
 
     callback.(:done)
