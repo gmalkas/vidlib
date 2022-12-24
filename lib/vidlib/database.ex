@@ -1,6 +1,12 @@
 defmodule Vidlib.Database do
   use GenServer
 
+  require Logger
+
+  @save_delay_ms :timer.seconds(15)
+
+  defstruct [:tid, :save_timer]
+
   # API
 
   def start_link(_args) do
@@ -65,7 +71,7 @@ defmodule Vidlib.Database do
   end
 
   def save do
-    GenServer.call(__MODULE__, :save_to_file)
+    GenServer.cast(__MODULE__, :save_to_file)
   end
 
   # CALLBACKS
@@ -77,38 +83,50 @@ defmodule Vidlib.Database do
         {:error, :not_found} -> :ets.new(__MODULE__, [:named_table])
       end
 
-    {:ok, tid}
+    {:ok, %__MODULE__{tid: tid}}
   end
 
-  def handle_call(:clear, _from, tid) do
-    :ets.delete_all_objects(tid)
-    store_cache_file(tid)
+  def handle_call(:clear, _from, state) do
+    :ets.delete_all_objects(state.tid)
+    store_cache_file(state)
 
-    {:reply, :ok, tid}
+    {:reply, :ok, state}
   end
 
-  def handle_call({:delete, key}, _from, tid) do
-    :ets.delete(tid, key)
+  def handle_call({:delete, key}, _from, state) do
+    :ets.delete(state.tid, key)
 
-    {:reply, :ok, tid}
+    {:reply, :ok, state}
   end
 
-  def handle_call({:put, key, value}, _from, tid) do
-    put_in_cache(tid, key, value)
+  def handle_call({:put, key, value}, _from, state) do
+    put_in_cache(state.tid, key, value)
 
-    {:reply, :ok, tid}
+    {:reply, value, state}
   end
 
-  def handle_call({:merge, key, value}, _from, tid) do
-    merge_in_cache(tid, key, value)
+  def handle_call({:merge, key, value}, _from, state) do
+    merge_in_cache(state.tid, key, value)
 
-    {:reply, :ok, tid}
+    {:reply, :ok, state}
   end
 
-  def handle_call(:save_to_file, _from, tid) do
-    store_cache_file(tid)
+  def handle_cast(:save_to_file, state) do
+    timer =
+      if !is_nil(state.save_timer) && :erlang.read_timer(state.save_timer) do
+        state.save_timer
+      else
+        :erlang.send_after(@save_delay_ms, self(), :save_to_file)
+      end
 
-    {:reply, :ok, tid}
+    {:noreply, %__MODULE__{state | save_timer: timer}}
+  end
+
+  def handle_info(:save_to_file, state) do
+    Logger.debug("Saving database to file.")
+    store_cache_file(state)
+
+    {:noreply, state}
   end
 
   # HELPERS
@@ -132,11 +150,11 @@ defmodule Vidlib.Database do
 
   defp put_in_cache(tid, key, value), do: :ets.insert(tid, {key, value})
 
-  defp store_cache_file(tid) do
+  defp store_cache_file(state) do
     destination_file_path = file_path()
     {:ok, temporary_file_path} = Briefly.create()
 
-    :ets.tab2file(tid, String.to_charlist(temporary_file_path), sync: true)
+    :ets.tab2file(state.tid, String.to_charlist(temporary_file_path), sync: true)
 
     :ok = File.rename(temporary_file_path, destination_file_path)
   end
