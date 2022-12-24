@@ -28,11 +28,18 @@ defmodule Vidlib.Downloader do
       Port.open({:spawn_executable, bin_path()}, [
         :stderr_to_stdout,
         :binary,
+        {:line, 4096},
         :exit_status,
         args: args
       ])
 
     handle_download_progress(port, progress_callback, video_format_id, audio_format_id)
+  end
+
+  def metadata(link) do
+    with {:ok, output} <- exec(["-j", link]) do
+      {:ok, parse_metadata(Jason.decode!(output))}
+    end
   end
 
   def thumbnail_as_data_url(%Youtube.Video{} = video) do
@@ -130,12 +137,6 @@ defmodule Vidlib.Downloader do
       {^port, {:exit_status, status}} ->
         Logger.error(buffer)
         callback.({:error, status})
-    end
-  end
-
-  def metadata(link) do
-    with {:ok, output} <- exec(["-j", link]) do
-      {:ok, parse_metadata(Jason.decode!(output))}
     end
   end
 
